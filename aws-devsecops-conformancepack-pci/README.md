@@ -1,46 +1,49 @@
 <p align="center">
 </p>
 
-# Automated, Real Time and Continuous Remediations for PCI Benchmarks using AWS Config
+# DevSecOps for Auto Healing PCI Compliance using custom AWS Config Conformance Packs and AWS CodePipeline
 
-These templates provide real time, continuous and automated remediations for each of the PCI benchmarks by providing a fully automated  integration with AWS Config Remediation and AWS Systems Manager automation documents. They leverage the format of AWS Config Conformance Packs
+Augments the AWS Config Conformance Pack for Operational Best Practices for PCI DSS 3.2.1 with 2 features –
+1. Auto healing for PCI related AWS Config Managed rules. Adds Remediation to the PCI Conformance Packs. Implemented using Custom AWS Config Conformance Packs that leverage custom AWS Systems Manager Automation Documents provided via AWS CloudFormation
+2.	DevSecOps CI/CD pipeline for PCI compliance that incorporates “PCI Compliance as code” in an existing DevOps workflows. Implemented via integrating AWS Custom Config Conformance Packs with AWS CodePipeline and provided via AWS CloudFormation.  
 
-This is the first of the 2 approaches---these templates are built to leverage AWS Config for both detection and automatic, continuous remediation. Another set of templates in this repository  provide an incident response dashboard mechanism  (i.e. not continuous/self healing) that natively uses AWS Security Hub for both detection and automated remediation. 
-
-Template 1 first provisions AWS Systems Manager Automation Documents as well as all the required pre-reqs. Template 2 then leverages the SSM documents within AWS Config Remediation Rules in the format of Conformance Packs.
 
 
 ## How it Works
 
-1. Leverages the format of AWS Conformance Templates
-2. Leverages AWS Config Managed Rules to provide automated and continuous detection and recording of PCI Benchmarks - native built-in support from AWS for providing secure compliance baselines
-3. Provides NEW AWS Systems Manager Automation Documents for automated remediation for AWS Config PCI Benchmark findings
-4. Provides NEW integration of AWS Config Remediations with AWS Systems Manager Automation Documents to provide continuous and real time remediations of AWS Config PCI Benchmark findings
+1. aws-pci-confpack-codepipeline.yml
+- Triggers an AWS CodePipeline based CI/CD pipeline whenever there is an update to the source AWS CloudFormation templates in your local Git repository. These source AWS CloudFormation templates incorporate the code for the custom AWS Config Conformance Packs.
+- Provisions an AWS CodePipeline automation with AWS CodeCommit and AWS CodeBuild stages for the build and deployment of the AWS Config Conformance Packs
+2. aws-pci-confpack-ssmautomation-v1.yml
+- Provisions custom AWS Systems Manager automation documents for PCI remediation. These documents are used to provide automated remediations within the provisioned AWS Config rule using the AWS:Config:RemediationConfiguration CloudFormation construct in the AWS Config Conformance Pack. 
+- Provisions pre-requisites for the AWS Config Conformance Pack deployment such as the AWS Systems Manager automation role, S3 buckets for logging and replication for S3 related remediations and CloudWatch logs and CloudWatch role for AWS CloudTrail related remediations for PCI compliance
+3. Custom AWS Config Conformance Packs
+- aws-pci-conformancepack-v1-1.yml – Provisions a custom AWS Config Conformance Pack for the detection and remediation for Amazon EC2, AWS Auto Scaling and AWS Lambda based PCI Compliance violations
+- aws-pci-conformancepack-v1-2.yml - Provisions a custom AWS Config Conformance Pack for the detection and remediation for AWS CloudTrail, AWS KMS and AWS CodeBuild based PCI Compliance violations 
+- aws-pci-conformancepack-v1-3.yml - Provisions a custom AWS Config Conformance Pack for the detection and remediation for Amazon Redshift, AWS RDS and AWS IAM based PCI Compliance violations.
 
-
-## DEMO
-
-Watch a [demo](https://awscisautoreme.com/overview.html) here to see how this solution works end to end for CIS Benchmarks
 
 ## Solution Design
 
-![Solution Design](https://github.com/kmmahaj/config/blob/master/aws-conformancepack-pci/images/arch-diagram1.png)
+![](images/arch-diagram.png)
+
+## Prerequisites
+1.	Custom AWS Config Conformance Packs - Set up prerequisites for deploying and building with both AWS Config Conformance Packs as well as custom AWS Config Conformance Packs with remediations. Refer to AWS documentation
+2.	Local Git repository and AWS CodeCommit Git repository setup – Create an AWS CodeCommit Git Repository in your AWS account and integrate it with your local Git repository. Refer to AWS documentation.
+3.	Staging S3 bucket – The solution consists of staging S3 bucket with the following naming convention: s3-pciautohealconfpack--accountid-region. Substitute these parameters in the buildspec.yml with your corresponding AWS Account ID and Region parameters. The buildspec.yml uses the staging S3 bucket as the template-s3-uri parameter while invoking the aws configservice put-conformance-pack cli.
 
 
 ## How To Install
 
-1. **Template 1 of 2:** aws-pci-confpack-ssmautomation.yml
-* Provisions AWS Systems Manager automation documents. These documents are used to provide automated remediations within the provisioned AWS Config Rule.
-* Provisions with fully built-in pre-reqs. No input parameters required. Simply install on the CloudFormation console (or CLI). Installs in approx 3-4 mins.
-
-2. **Template 2 of 2:** aws-pci-conformancepack.yml
-* Provisions AWS Config Rules in the format of a Conformance Template with built-in remediation. No input parameters. Simply install on the CloudFormation console (or CLI). Installs in approx 3-4 mins.
-* Leverages the output from the previous template specifically the AWS Systems Manager Automation documents
+1. **Template 1 of 2:** aws-pci-confpack-ssmautomation-v1.yml
+* Sets up AWS Systems Manager Automation Documents for PCI related Auto Healing and the required PCI remediation related pre-requisites. No parameters needed. Installs in approx 2-3 mins.
+ 
+2. **Template 2 of 2:** aws-pci-confpack-codepipeline.yml
+* Sets up AWS CodePipeline based DevSecOps automation
+* Installs aws-pci-conformancepack-v1-[1,2,3].yml for custom AWS Config Conformance Packs with Remediation for PCI
 
 ## COVERAGE
 
 The [Coverage Matrix](https://github.com/kmmahaj/config/blob/master/aws-conformancepack-pci/coverage/AWS%20SecurityHub%20Benchmarks-Coverage-v1.xlsx) provides the current coverage of this solution wrt the PCI Benchmarks
 
-## Author
-
-Kanishk Mahajan; kmmahaj@amazon.com
+## @kmmahaj
