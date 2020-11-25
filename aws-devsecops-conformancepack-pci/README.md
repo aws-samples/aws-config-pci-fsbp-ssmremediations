@@ -30,8 +30,8 @@ Augments the AWS Config Conformance Pack for Operational Best Practices for PCI 
 ## Prerequisites
 1.	Custom AWS Config Conformance Packs - Set up prerequisites for deploying and building with both AWS Config Conformance Packs as well as custom AWS Config Conformance Packs with remediations. Refer to AWS documentation
 2.	Local Git repository and AWS CodeCommit Git repository setup – Create an AWS CodeCommit Git Repository in your AWS account and integrate it with your local Git repository. Refer to AWS documentation.
-3.	Staging S3 bucket – The solution consists of staging S3 bucket with the following naming convention: **s3-pciautohealconfpack--accountid-region. Substitute these parameters in the buildspec.yml with your corresponding AWS Account ID and Region.** The buildspec.yml uses the staging S3 bucket as the template-s3-uri parameter while invoking the aws configservice put-conformance-pack cli.
-4. In each of the aws-pci-conformancpack-v1-[1,2,3] templates **substitute the accountid and region parameter in the automation assume role ARN with your AWS Account ID and Region.**
+3.	Staging S3 bucket – The solution creates a staging S3 bucket with the following naming convention: **s3-pciautohealconfpack--accountid-region. Substitute the accountid and region parameters in the buildspec.yml with your AWS Account ID and Region.** The buildspec.yml uses the staging S3 bucket as the template-s3-uri parameter while invoking the aws configservice put-conformance-pack cli.
+4. In each of the aws-pci-conformancpack-v1-[1,2,3] templates **substitute the accountid and region parameters in the AutomationAssumeRole ARN parameter with your AWS Account ID and Region.**
 
 
 ## How To Install
