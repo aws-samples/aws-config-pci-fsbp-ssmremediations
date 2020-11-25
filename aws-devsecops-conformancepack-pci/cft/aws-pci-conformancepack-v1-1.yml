@@ -34,7 +34,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         ASGGroupArn:
           ResourceValue:
             Value: "RESOURCE_ID"
@@ -71,7 +71,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         AllocationId:
           ResourceValue:
             Value: "RESOURCE_ID"
@@ -103,7 +103,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         snapshotId:
           ResourceValue:
             Value: "RESOURCE_ID"
@@ -140,7 +140,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         groupId:
           ResourceValue:
             Value: "RESOURCE_ID"
@@ -177,7 +177,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         IpAddressToBlock:
           StaticValue:
             Values:
@@ -217,7 +217,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         accountID:
           StaticValue:
             Values:

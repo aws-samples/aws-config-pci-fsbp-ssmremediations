@@ -36,7 +36,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         KMSKeyArn:
           ResourceValue:
             Value: "RESOURCE_ID"
@@ -73,7 +73,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         projectName:
           ResourceValue:
             Value: "RESOURCE_ID"
@@ -114,7 +114,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         CloudTrailLogGroupArn:
           StaticValue:
             Values:
@@ -160,7 +160,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         CloudTrailLogGroupArn:
           StaticValue:
             Values:

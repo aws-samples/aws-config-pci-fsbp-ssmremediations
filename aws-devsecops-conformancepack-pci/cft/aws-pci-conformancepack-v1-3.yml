@@ -34,7 +34,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         dbresourceid:
           ResourceValue:
             Value: "RESOURCE_ID"
@@ -70,7 +70,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         clusterId:
           ResourceValue:
             Value: "RESOURCE_ID"
@@ -106,7 +106,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         snapshotId:
           ResourceValue:
             Value: "RESOURCE_ID"
@@ -149,7 +149,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         S3IAMReplicationRole:
           StaticValue:
             Values:
@@ -194,7 +194,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         username:
           ResourceValue:
             Value: "RESOURCE_ID"
@@ -233,7 +233,7 @@ Resources:
         AutomationAssumeRole:
           StaticValue:
             Values:
-              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+              - arn:aws:iam::<accountid>:role/automationassumerole-<region>
         accountid:
           StaticValue:
             Values:
