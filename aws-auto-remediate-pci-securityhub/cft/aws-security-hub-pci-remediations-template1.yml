@@ -1,28 +1,37 @@
 
-# -------------------------------------------------------------------------------------------------
-# CloudFormation Template 1 of 2 - Real Time Automated Remediation for PCI DSS Findings based on Security Hub
-#
-# Provisions Systems Manager Automation Documents for CIS AWS Foundations Benchmark 
-# Each document is invoked from a AWS Security Hub Custom Action 
-# 
-# 
+Description: AWS Security Hub PCI Remediations Systems Manager Automation Documents and Prerequisites
+AWSTemplateFormatVersion: "2010-09-09"
+
 # @author Kanishk Mahajan
-# ---------------------------------------------------------------------------------------------------
+#
+## License:
+## This code is made available under the MIT-0 license. See the LICENSE file.
 
 
 Outputs:
-  FlowLogsRoleArn:
-    Description: Arn for FlowsLogsRole
-    Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${FlowLogsRole}'  
-    Export: # added to export
-      Name: FlowLogsRoleArn
+
   AutomationAssumeRoleArn:
     Description: Arn for AutomationAssumeRole
     Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}'
     Export: # added to export
       Name: AutomationAssumeRoleArn
+  FlowLogsRoleArn:
+    Description: Arn for FlowsLogsRole
+    Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${FlowLogsRole}'  
+    Export: # added to export
+      Name: FlowLogsRoleArn
+  FlowLogsCloudWatchLogGroupArn:
+    Description: Arn for FlowLogs CloudWatchLogs
+    Value: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${FlowLogsCloudWatchLogs}"
+    Export: # added to export
+      Name: FlowLogsCloudWatchLogGroupArn
+  FlowLogsCloudWatchLogs:
+    Description: Name of FlowLogs CloudWatch Logs
+    Value: !Ref FlowLogsCloudWatchLogs
+    Export: # added to export
+      Name: FlowLogsCloudWatchLogs
   RestrictLambdaVPCRoleArn:
-    Description: Arn for AutomationAssumeRole
+    Description: Arn for RestrictLambdaVPCRole - PCI.Lambda.2
     Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${RestrictLambdaVPCRole}'
     Export: # added to export
       Name: RestrictLambdaVPCRoleArn
@@ -36,16 +45,11 @@ Outputs:
     Value: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${CloudTrailLogGroup}:*"
     Export: # added to export
       Name: CloudTrailLogGroupArn
-  S3LoggingBucketFullName:
-    Description: S3 Logging Bucket  - CIS 2.6
-    Value: !Ref S3LoggingBucket
-    Export: # added to export
-      Name: S3LoggingBucketFullName
   SSMInstanceProfileRoleArn:
     Description: Arn for SSMInstanceProfileRole
     Value: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${SSMInstanceProfileRole}'
     Export: # added to export
-      Name: FSBP-SSMInstanceProfileRoleArn
+      Name: PCI-SSMInstanceProfileRoleArn
   S3ReplicationBucketFullName:
     Description: S3 Replication Bucket  - PCI S3.3
     Value: !Ref S3ReplicationBucket
@@ -71,31 +75,21 @@ Outputs:
     Value: !GetAtt SecureVPCStack.Outputs.securitygroupid
     Export: # added to export
       Name: securitygroup1
-  FlowLogsCloudWatchLogGroupArn:
-    Description: Arn for FlowLogs CloudWatchLogs
-    Value: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${FlowLogsCloudWatchLogs}"
+  PCIS3CloudTrailBucket:
+    Description: PCI S3 CloudTrail Bucket
+    Value: !Ref PCIS3CloudTrailBucket
     Export: # added to export
-      Name: FlowLogsCloudWatchLogGroupArn
-  FlowLogsCloudWatchLogs:
-    Description: Name of FlowLogs CloudWatch Logs
-    Value: !Ref FlowLogsCloudWatchLogs
-    Export: # added to export
-      Name: FlowLogsCloudWatchLogs
-  CISS3CloudTrailBucket:
-    Description: CIS S3 CloudTrail Bucket
-    Value: !Ref CISS3CloudTrailBucket
-    Export: # added to export
-      Name: CISS3CloudTrailBucket
+      Name: PCIS3CloudTrailBucket
   CloudTrailLogGroup:
-    Description: CIS CloudTrail CloudWatch Log Group
+    Description: PCI CloudTrail CloudWatch Log Group
     Value: !Ref CloudTrailLogGroup
     Export: # added to export
       Name: CloudTrailLogGroup
-  CISCloudTrail:
-    Description: CIS CloudTrail
-    Value: 'remediation-cis-trail'
+  PCICloudTrail:
+    Description: PCI CloudTrail
+    Value: 'remediation-pci-trail'
     Export: # added to export
-      Name: CISCloudTrail
+      Name: PCICloudTrail
   CloudWatchRoleArn:
     Description: Arn for CloudTrail CloudWatch IAM Role 
     Value: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${CloudWatchRole}"
@@ -107,21 +101,31 @@ Outputs:
     Export: # added to export
       Name: KMSKeyArn
 
+Parameters:
+
+  DeliveryChannelExists:
+    Description: >-
+      Choose 'true' if Delivery Channel is already provisioned
+    Type: String
+    Default: 'false'
+    AllowedValues: ['false', 'true']
+
+Conditions:
+  CreateDeliveryChannel: !Equals [ !Ref DeliveryChannelExists, 'false' ] 
+
+Mappings:
+  SourceCode:
+    General:
+      S3Bucket: pci
+      KeyPrefix: aws-security-hub-pci-remediations/template1
+
 Resources:
 
-# ------------------------------------------------------------------------------------------
-# CIS AWS Foundations Benchmark - Pre-requesites
-#
-# Provisions all pre-req AWS Services for PCI-DSS remediations
-#
-# @kanishk.mahajan
-# ---------------------------------------------------------------------------------------------
-
 # Bucket Policy for CloudTrail S3 Bucket. Restrict to allow access to only SSL transport.
-  CISBucketPolicy:
+  PCIBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
-      Bucket: !Ref CISS3CloudTrailBucket
+      Bucket: !Ref PCIS3CloudTrailBucket
       PolicyDocument:
         Statement:
           -
@@ -129,8 +133,8 @@ Resources:
               - "s3:*"
             Effect: "Allow"
             Resource:
-              - !Sub arn:${AWS::Partition}:s3:::${CISS3CloudTrailBucket}
-              - !Sub arn:${AWS::Partition}:s3:::${CISS3CloudTrailBucket}/*
+              - !Sub arn:${AWS::Partition}:s3:::${PCIS3CloudTrailBucket}
+              - !Sub arn:${AWS::Partition}:s3:::${PCIS3CloudTrailBucket}/*
             Principal:
               AWS:
               - !Ref AWS::AccountId
@@ -139,8 +143,8 @@ Resources:
               - "s3:*"
             Effect: "Allow"
             Resource:
-              - !Sub arn:${AWS::Partition}:s3:::${CISS3CloudTrailBucket}
-              - !Sub arn:${AWS::Partition}:s3:::${CISS3CloudTrailBucket}/*
+              - !Sub arn:${AWS::Partition}:s3:::${PCIS3CloudTrailBucket}
+              - !Sub arn:${AWS::Partition}:s3:::${PCIS3CloudTrailBucket}/*
             Principal:
               Service:
               - cloudtrail.amazonaws.com
@@ -149,17 +153,17 @@ Resources:
             Principal: "*"
             Action: "*"
             Resource:
-              - !Sub arn:${AWS::Partition}:s3:::${CISS3CloudTrailBucket}
-              - !Sub arn:${AWS::Partition}:s3:::${CISS3CloudTrailBucket}/*
+              - !Sub arn:${AWS::Partition}:s3:::${PCIS3CloudTrailBucket}
+              - !Sub arn:${AWS::Partition}:s3:::${PCIS3CloudTrailBucket}/*
             Condition:
               Bool:
                 aws:SecureTransport: 'false'
 
 # S3 Bucket to store CloudTrail logs
-  CISS3CloudTrailBucket:
+  PCIS3CloudTrailBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "s3-cis-${AWS::AccountId}-${AWS::Region}"
+      BucketName: !Sub "s3-pci-${AWS::AccountId}-${AWS::Region}"
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -181,92 +185,6 @@ Resources:
         -
           Key: Description
           Value: S3 Bucket for CloudTrail Logs
-      VersioningConfiguration:
-        Status: Enabled
-
-# S3 Bucket to store CloudTrail logs
-  CISS3CloudTrailBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub "s3-cis-${AWS::AccountId}-${AWS::Region}"
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
-      AccessControl: BucketOwnerFullControl
-      LifecycleConfiguration:
-        Rules:
-          -
-            AbortIncompleteMultipartUpload:
-              DaysAfterInitiation: 3
-            NoncurrentVersionExpirationInDays: 3
-            Status: Enabled
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      Tags:
-        -
-          Key: Description
-          Value: S3 Bucket for CloudTrail Logs
-      VersioningConfiguration:
-        Status: Enabled
-
-# Bucket Policy for S3 Bucket used for Bucket Logging. Restrict to allow access to only SSL transport.
-  S3LoggingBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref S3LoggingBucket
-      PolicyDocument:
-        Statement:
-          -
-            Action:
-              - "s3:*"
-            Effect: "Allow"
-            Resource:
-              - !Sub arn:${AWS::Partition}:s3:::${S3LoggingBucket}
-              - !Sub arn:${AWS::Partition}:s3:::${S3LoggingBucket}/*
-            Principal:
-              AWS:
-              - !Ref AWS::AccountId
-          -
-            Effect: Deny
-            Principal: "*"
-            Action: "*"
-            Resource:
-              - !Sub arn:${AWS::Partition}:s3:::${S3LoggingBucket}
-              - !Sub arn:${AWS::Partition}:s3:::${S3LoggingBucket}/*
-            Condition:
-              Bool:
-                aws:SecureTransport: 'false'
-
-# S3 Bucket for Bucket Logging
-  S3LoggingBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub "s3-logging-${AWS::AccountId}-${AWS::Region}"
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
-      AccessControl: BucketOwnerFullControl
-      LifecycleConfiguration:
-        Rules:
-          -
-            AbortIncompleteMultipartUpload:
-              DaysAfterInitiation: 3
-            NoncurrentVersionExpirationInDays: 3
-            Status: Enabled
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      Tags:
-        -
-          Key: Description
-          Value: S3 Bucket for Logging
       VersioningConfiguration:
         Status: Enabled
 
@@ -303,7 +221,7 @@ Resources:
   AutomationAssumeRole:
     Type: 'AWS::IAM::Role'
     Properties:
-      RoleName: !Sub fsbp-automationassumerole-${AWS::Region}
+      RoleName: !Sub pci-automationassumerole-${AWS::Region}
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -323,7 +241,7 @@ Resources:
   SSMInstanceProfileRole:
     Type: 'AWS::IAM::Role'
     Properties:
-      RoleName: !Sub fsbp-ssminstanceprofilerole-${AWS::Region}
+      RoleName: !Sub pci-ssminstanceprofilerole-${AWS::Region}
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -338,23 +256,32 @@ Resources:
         - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
 
 
-# Secure VPC for PCI.Lambda.2 and PCI.ES.1
+  # Secure VPC for PCI.Lambda.2 and PCI.ES.1
+  # https://pci-securityhub-quickstart.s3.amazonaws.com/aws-security-hub-pci-remediations/template1/aws-securevpcsetup.json
   SecureVPCStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL:
         Fn::Join:
-         - ""
-         - - "https://"
-           - "s3-vpctemplates"
-           - "-"
-           - Ref: AWS::AccountId
-           - "-"
-           - Ref: AWS::Region
-           - ".s3."
-           - Ref: AWS::Region
-           - ".amazonaws.com/"
-           - "aws-securevpcsetup.json"
+          - ""
+          - - https://
+            - Fn::FindInMap:
+                - SourceCode
+                - General
+                - S3Bucket
+            - -securityhub-quickstart.s3.amazonaws.com/
+            - Fn::FindInMap:
+                - SourceCode
+                - General
+                - KeyPrefix
+            - /aws-securevpcsetup.template
+
+#CloudTrail CW Log Group
+  CloudTrailLogGroup: 
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      LogGroupName: !Sub DefaultLogGroup-${AWS::Region}
+      RetentionInDays: 1827
 
 #FlowLogs CW Log Group
   FlowLogsCloudWatchLogs: 
@@ -363,12 +290,25 @@ Resources:
       LogGroupName: !Sub flowlogscloudwatchlogs-${AWS::Region}
       RetentionInDays: 1827
 
-#CloudTrail CW Log Group
-  CloudTrailLogGroup: 
-    Type: AWS::Logs::LogGroup
-    Properties: 
-      LogGroupName: !Sub DefaultLogGroup-${AWS::Region}
-      RetentionInDays: 1827
+# RestrictLambdaVPCRole
+  RestrictLambdaVPCRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub restrictlambdavpcrole-${AWS::Region}
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+        - arn:aws:iam::aws:policy/AmazonEC2FullAccess
+        - arn:aws:iam::aws:policy/IAMFullAccess
 
 # Flow Logs Role
   FlowLogsRole:
@@ -410,47 +350,6 @@ Resources:
               - ec2.amazonaws.com
           Action:
           - sts:AssumeRole
-
-# SSM Automation Role
-  AutomationAssumeRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      RoleName: !Sub automationassumerole-${AWS::Region}
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - ssm.amazonaws.com
-                - events.amazonaws.com
-                - ec2.amazonaws.com
-            Action:
-              - 'sts:AssumeRole'
-      Path: /
-      ManagedPolicyArns:
-        - arn:${AWS::Partition}:iam::aws:policy/IAMFullAccess
-        - arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess
-
-# RestrictLambdaVPCRole
-  RestrictLambdaVPCRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      RoleName: !Sub restrictlambdavpcrole-${AWS::Region}
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - 'sts:AssumeRole'
-      Path: /
-      ManagedPolicyArns:
-        - arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
-        - arn:${AWS::Partition}:iam::aws:policy/AmazonEC2FullAccess
-        - arn:${AWS::Partition}:iam::aws:policy/IAMFullAccess
 
 # Cloud Watch Role
   CloudWatchRole:
@@ -535,7 +434,7 @@ Resources:
           Action:
           - sts:AssumeRole
 
-# CIS KMS CMK
+# PCI KMS CMK
   KmsKeyId:
     Type: 'AWS::KMS::Key'
     Properties:
@@ -545,26 +444,27 @@ Resources:
       KeyPolicy:
         Version: '2012-10-17'
         Statement:
-          - Sid: Enable IAM User Permissions
+          - Sid: Sid1
             Effect: Allow
             Principal:
               AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
             Action: 'kms:*'
             Resource: '*'
 
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.CloudTrail.1] CloudTrail logs should be encrypted at rest using AWS KMS CMKs
-#
-# SSM Automation Document that leverages  context passed from AWS Security Hub action 
-# Similar pattern is repeated for each automation document
-#
-# @kanishk.mahajan
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  CustomCloudTrailEncryptionAutomationCF:
+  KmsKeyIdAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/PCI-CMK
+      TargetKeyId:
+        Fn::GetAtt:
+          - KmsKeyId
+          - Arn
+
+  PCICloudTrail1Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-CloudTrailEncryptionCF
+      Name: PCICloudTrail1Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -597,14 +497,11 @@ Resources:
                 TrailName: '{{TrailName}}'
                 KMSKeyArn: '{{KMSKeyArn}}'
 
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.KMS.1] Customer master key (CMK) rotation should be enabled
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  CustomCMKBackingKeyRotationCF:
+  PCIKMS1Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-CMKBackingKeyRotationCF
+      Name: PCIKMS1Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -625,16 +522,14 @@ Resources:
                 AutomationAssumeRole: '{{AutomationAssumeRole}}'
                 KMSKeyArn: '{{KMSKeyArn}}'
 
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.CloudTrail.4] CloudTrail trails should be integrated with CloudWatch Logs
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  CustomCloudTrailUpdateCF:
+
+  PCICloudTrail4Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-CloudTrailUpdateCF
+      Name: PCICloudTrail4Automation
       Content:
-        description: CIS 2.4 – Ensure CloudTrail trails are integrated with Amazon CloudWatch Logs
+        description: PCI.CloudTrail.4 – Ensure CloudTrail trails are integrated with Amazon CloudWatch Logs
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
         parameters:
@@ -662,14 +557,11 @@ Resources:
                 CloudWatchRoleArn: '{{CloudWatchRoleArn}}'
                 TrailName: '{{TrailName}}'
 
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# PCI IAM 4– Updates IAM Account Settings Password Policy
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  CustomIAMPasswordUpdateCF:
+  PCIIAM8Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-IAMPasswordUpdateCF
+      Name: PCIIAM8Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -701,14 +593,12 @@ Resources:
               InputPayload:
                 AutomationAssumeRole: '{{AutomationAssumeRole}}'
 
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.IAM.1] IAM root user access key should not exist
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  CustomDeactivateRootIAMAccessKeyCF:
+
+  PCIIAM1Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-DeactivateRootIAMAccessKeyCF
+      Name: PCIIAM1Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -743,21 +633,18 @@ Resources:
                 AutomationAssumeRole: '{{AutomationAssumeRole}}'
                 username: '{{username}}'
 
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.IAM.2] IAM users should not have IAM policies attached
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  CustomIAMUserPolicyDetachCF:
+  PCIIAM2Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-IAMUserPolicyDetachCF
+      Name: PCIIAM2Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
         parameters:
           username:
             type: String
-            default: 'cisadmin'
+            default: 'pciadmin'
           findingid:
             type: String
             default: '0123'
@@ -785,7 +672,7 @@ Resources:
                      userpolicies =[]
                      userpolicies = userpolicyresponse.get("AttachedPolicies")
 
-                     newgroup = "CISGroup" + "-" + userName + "-" + findingid
+                     newgroup = "PCI-IAM2" + "-" + userName + "-" + findingid
                      grouplist = client.list_groups()
 
                      for group in grouplist:
@@ -835,22 +722,18 @@ Resources:
                 username: '{{username}}'
                 findingid: '{{findingid}}'
 
-
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.IAM.3] IAM policies should not allow full "*" administrative privileges
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  CustomIAMFullAdminPolicyDetachCF:
+  PCIIAM3Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-IAMFullAdminPolicyDetachCF
+      Name: PCIIAM3Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
         parameters:
           username:
             type: String
-            default: 'cisadmin'
+            default: 'pciadmin'
           AutomationAssumeRole:
             type: String
             default: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -889,14 +772,11 @@ Resources:
                 AutomationAssumeRole: '{{AutomationAssumeRole}}'
                 username: '{{username}}'
 
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.CloudTrail.3] CloudTrail log file validation should be enabled
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  CustomLogFileValidationCF:
+  PCICloudTrail3Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-LogFileValidationCF
+      Name: PCICloudTrail3Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -925,14 +805,11 @@ Resources:
                 CloudWatchRoleArn: '{{CloudWatchRoleArn}}'
                 TrailName: '{{TrailName}}'
 
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.EC2.2] VPC default security group should prohibit inbound and outbound traffic
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  RestrictSecurityGroupPublicAccess:
+  PCIEC22Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-RestrictSecurityGroup
+      Name: PCIEC22Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -957,15 +834,11 @@ Resources:
                 groupId: '{{groupId}}'
                 IpAddressToBlock: '{{IpAddressToBlock}}'
 
-
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.EC2.3] Unused EC2 security groups should be removed
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  RemoveSecurityGroup:
+  PCIEC23Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-RemoveSecurityGroup
+      Name: PCIEC23Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -986,14 +859,11 @@ Resources:
                 AutomationAssumeRole: '{{AutomationAssumeRole}}'
                 groupId: '{{groupId}}'
 
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.EC2.4] Unused EC2 EIPs should be removed
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  ReleaseEIP:
+  PCIEC24Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-ReleaseEIP
+      Name:  PCIEC24Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -1014,15 +884,40 @@ Resources:
                 AutomationAssumeRole: '{{AutomationAssumeRole}}'
                 allocationId: '{{allocationId}}'
 
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.EC2.6] – Ensure VPC flow logging is enabled in all VPCs
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  
-  EnableVPCFlowLogsCF:
+  PCIEC25Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-EnableVPCFlowLogsCF
+      Name: PCIEC25Automation
+      Content:
+        schemaVersion: '0.3'
+        assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
+        parameters:
+          groupId:
+            type: String
+          IpAddressToBlock:
+            type: String
+            default: '0.0.0.0/0'
+          AutomationAssumeRole:
+            type: String
+            default: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
+        mainSteps:
+          - name: RestrictSecurityGroup
+            action: 'aws:executeScript'
+            inputs:
+              Runtime: python3.6
+              Handler: restrict_sg
+              Script: "def restrict_sg(events, context):\r\n  import boto3\r\n  import json\r\n  import os\r\n  ec2 = boto3.resource('ec2')\r\n  defaultSecGroupId = events['groupId']\r\n  try:\r\n      defaultSG = ec2.SecurityGroup(defaultSecGroupId)\r\n      defaultIngress = defaultSG.ip_permissions\r\n      defaultEgress = defaultSG.ip_permissions_egress\r\n      revokeIngress = defaultSG.revoke_ingress(IpPermissions=defaultIngress)\r\n      revokeEgress = defaultSG.revoke_egress(IpPermissions=defaultEgress)\r\n  except Exception as e:\r\n      print(e)"
+              InputPayload:
+                AutomationAssumeRole: '{{AutomationAssumeRole}}'
+                groupId: '{{groupId}}'
+                IpAddressToBlock: '{{IpAddressToBlock}}'
+
+  PCIEC26Automation:
+    Type: AWS::SSM::Document
+    Properties:
+      DocumentType: Automation
+      Name: PCIEC26Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -1055,15 +950,11 @@ Resources:
                 FlowLogRoleArn: '{{FlowLogRoleArn}}'
                 VpcId: '{{VpcId}}'
 
-
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.AutoScaling.1] Auto scaling groups associated with a load balancer should use health checks
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  AutoScalingELBHealthCheck:
+  PCIAutoScaling1Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-AutoScalingELBHealthCheck
+      Name:  PCIAutoScaling1Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -1084,15 +975,11 @@ Resources:
                 AutomationAssumeRole: '{{AutomationAssumeRole}}'
                 ASGGroupName: '{{ASGGroupName}}'
 
-
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.CodeBuild.2] CodeBuild project environment variables should not contain clear text credentials
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  CodeBuildUpdateProject:
+  PCICodeBuild2Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-CodeBuildUpdateProject
+      Name: PCICodeBuild2Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -1112,16 +999,12 @@ Resources:
               InputPayload:
                 AutomationAssumeRole: '{{AutomationAssumeRole}}'
                 projectName: '{{projectName}}'
-
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.RDS.1] RDS snapshots should prohibit public access
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
   
-  RDSPublicNonRestoreSnapshot:
+  PCIRDS1Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-ModifyRDSSnapshot
+      Name: PCIRDS1Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -1145,15 +1028,11 @@ Resources:
                 snapshotId: '{{snapshotId}}'
                 snapshotType: '{{snapshotType}}'
 
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.Redshift.1] Amazon Redshift clusters should prohibit public access
-# ------------------------------------------------------------------------------------------------------------------------------------------------------- 
-
-  RedshiftNonPublicCluster:
+  PCIRedshift1Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-ModifyRedshiftCluster
+      Name: PCIRedshift1Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -1173,16 +1052,12 @@ Resources:
               InputPayload:
                 AutomationAssumeRole: '{{AutomationAssumeRole}}'
                 clusterId: '{{clusterId}}'
-
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.RDS.2] RDS DB Instances should prohibit public access
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
   
-  RDSNonPublicDBInstance:
+  PCIRDS2Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-ModifyRDSDBInstance
+      Name: PCIRDS2Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -1202,140 +1077,12 @@ Resources:
               InputPayload:
                 AutomationAssumeRole: '{{AutomationAssumeRole}}'
                 dbinstanceId: '{{dbinstanceId}}'
-
-
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [RDS.3] RDS DB instances should have encryption at-rest enabled
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  
-  RDSEncryptDBInstance:
+      
+  PCILambda1Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-FSBP-EncryptRDSDBInstance
-      Content:
-        schemaVersion: '0.3'
-        assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
-        parameters:
-          AutomationAssumeRole:
-            type: String
-            default: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
-          dbinstanceId:
-            type: String     
-          kmskeyArn:
-            type: String      
-        mainSteps:
-          - name: EncryptRDSDBInstance
-            action: 'aws:executeScript'
-            timeoutSeconds: 4000
-            inputs:
-              Runtime: python3.6
-              Handler: script_handler
-              Script: |
-                def script_handler(events, context):
-                  import boto3
-                  import json
-                  import os
-                  import time
-                  
-                  client = boto3.client('rds')
-    
-                  dbinstanceId = events['dbinstanceId']
-  
-                  response_snapshot = client.create_db_snapshot(
-                      DBSnapshotIdentifier="fsbp-snapshot-" + dbinstanceId,
-                      DBInstanceIdentifier=dbinstanceId
-                  )
-    
-                  response_snapshotA = client.get_waiter('db_snapshot_available').wait(
-                      DBSnapshotIdentifier='fsbp-snapshot-' + dbinstanceId,
-                      DBInstanceIdentifier=dbinstanceId
-                  )
-
-                  response_snapshotCopy = client.copy_db_snapshot(
-                      SourceDBSnapshotIdentifier="fsbp-snapshot-" + dbinstanceId,
-                      TargetDBSnapshotIdentifier="fsbp-snapshot-encrypted-" + dbinstanceId,
-                      KmsKeyId=kmskeyArn,
-                      CopyTags=True
-                  )
-                
-                  response_snapshotB = client.get_waiter('db_snapshot_available').wait(
-                      DBSnapshotIdentifier='fsbp-snapshot-encrypted-' + dbinstanceId,
-                      DBInstanceIdentifier=dbinstanceId
-                  )
-
-                  response_restore = client.restore_db_instance_from_db_snapshot(
-                      DBInstanceIdentifier='fsbp-encrypted-' + dbinstanceId,
-                      DBSnapshotIdentifier='fsbp-snapshot-encrypted-' + dbinstanceId
-                  )
-
-                  response_snapshotC = client.get_waiter('db_instance_available').wait(
-                      DBInstanceIdentifier='fsbp-encrypted-' + dbinstanceId
-                  )
-
-                  response_delete1 =  client.delete_db_snapshot(
-                      DBSnapshotIdentifier='fsbp-snapshot-' + dbinstanceId
-                  )
-                              
-                  response_delete2 = client.get_waiter('db_snapshot_deleted').wait(
-                      DBSnapshotIdentifier='fsbp-snapshot-' + dbinstanceId,
-                      WaiterConfig={
-                           'Delay': 5,
-                           'MaxAttempts': 30
-                      }
-                  )
-                  
-                  response_delete3 = client.delete_db_instance(
-                      DBInstanceIdentifier=dbinstanceId,
-                      SkipFinalSnapshot=True
-                  )
-                              
-                  response_wait = client.get_waiter('db_instance_deleted').wait(
-                      DBInstanceIdentifier=dbinstanceId
-                  )             
-              InputPayload:
-                AutomationAssumeRole: '{{AutomationAssumeRole}}'
-                dbinstanceId: '{{dbinstanceId}}'
-                kmskeyArn: '{{kmskeyArn}}'
-
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.EC2.1] Amazon EBS snapshots should not be publicly restorable
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  
-  PublicNonRestoreSnapshot:
-    Type: AWS::SSM::Document
-    Properties:
-      DocumentType: Automation
-      Name: Custom-ModifySnapshot
-      Content:
-        schemaVersion: '0.3'
-        assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
-        parameters:
-          AutomationAssumeRole:
-            type: String
-            default: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
-          snapshotId:
-            type: String    
-        mainSteps:
-          - name: ModifySnapshot
-            action: 'aws:executeScript'
-            inputs:
-              Runtime: python3.6
-              Handler: script_handler
-              Script: "def script_handler(events, context):\r\n  import boto3\r\n  client = boto3.client('ec2')\r\n\r\n  snapshotId = events['snapshotId']\r\n  \r\n  response = client.modify_snapshot_attribute(\r\n    Attribute='createVolumePermission',\r\n    GroupNames=[\r\n        'all',\r\n    ],\r\n    OperationType='remove',\r\n    SnapshotId=snapshotId\r\n  )\r\n"
-              InputPayload:
-                AutomationAssumeRole: '{{AutomationAssumeRole}}'
-                snapshotId: '{{snapshotId}}'
-
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.Lambda.1] Lambda functions should prohibit public access
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  
-  RestrictPublicLambda:
-    Type: AWS::SSM::Document
-    Properties:
-      DocumentType: Automation
-      Name: Custom-RestrictPublicLambda
+      Name: PCILambda1Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -1358,86 +1105,12 @@ Resources:
                 AutomationAssumeRole: '{{AutomationAssumeRole}}'
                 accountID: '{{accountID}}'
                 functionname: '{{functionname}}'
-
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [EC2.3] Attached EBS volumes should be encrypted at-rest
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  
-  EncryptEBSVolume:
+    
+  PCILambda2Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-FSBP-EncryptEBSVolume
-      Content:
-        schemaVersion: '0.3'
-        assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
-        parameters:
-          AutomationAssumeRole:
-            type: String
-            default: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
-          ebsvolumeId:
-            type: String   
-          sourceregion:
-            type: String  
-          kmskeyArn:
-            type: String 
-        mainSteps:
-          - name: EncryptEBSVolume
-            action: 'aws:executeScript'
-            timeoutSeconds: 2000
-            inputs:
-              Runtime: python3.6
-              Handler: script_handler
-              Script: "def script_handler(events, context):\r\n    # TODO implement\r\n    import json\r\n    import boto3\r\n    \r\n    client = boto3.client('ec2')\r\n    ebsvolumeId = events['ebsvolumeId']\r\n    kmskeyArn = events['kmskeyArn']\r\n    sourceregion = events['sourceregion']\r\n    \r\n    print('0. Describe Volume')\r\n    \r\n    response_volume = client.describe_volumes(\r\n        VolumeIds=[\r\n        ebsvolumeId\r\n        ]   \r\n    )\r\n    instanceid = response_volume['Volumes'][0]['Attachments'][0]['InstanceId']\r\n    size= response_volume['Volumes'][0]['Size']\r\n    availabilityzone = response_volume['Volumes'][0]['AvailabilityZone']\r\n    \r\n    response_snapshot = client.create_snapshot(\r\n        Description='New FSBP snapshot',\r\n        VolumeId=ebsvolumeId\r\n    )\r\n    \r\n    snapshotid = response_snapshot['SnapshotId']\r\n    \r\n    response_snapshotA = client.get_waiter('snapshot_completed').wait(\r\n        SnapshotIds=[snapshotid]\r\n    )\r\n\r\n    print('2. Copy and Encrypt. Creating encrypted snapshot from unencrypted copy')\r\n    \r\n    response_snapshotCopy = client.copy_snapshot(\r\n        Description='New FSBP Encrypted snapshot.',\r\n        DestinationRegion=sourceregion,\r\n        SourceRegion=sourceregion,\r\n        SourceSnapshotId=snapshotid,\r\n        KmsKeyId=kmskeyArn,\r\n        Encrypted=True\r\n    )\r\n    \r\n    snapshotencryptedId = response_snapshot['SnapshotId']\r\n    \r\n    response_snapshotB = client.get_waiter('snapshot_completed').wait(\r\n        SnapshotIds=[snapshotencryptedId]\r\n    )\r\n    \r\n    print('3. Create volume from encrypted snapshot')\r\n    \r\n    response_volume_encrypted = client.create_volume(\r\n        AvailabilityZone=availabilityzone,\r\n        Size=size,\r\n        VolumeType='gp2',\r\n        KmsKeyId=kmskeyArn,\r\n        Encrypted=True\r\n    )\r\n\r\n    encryptedVolumeId = response_volume_encrypted['VolumeId']\r\n    \r\n    response_snapshotC = client.get_waiter('volume_available').wait(\r\n        VolumeIds=[encryptedVolumeId]\r\n    )\r\n\r\n    print('4. Stop original instance or terminate original instance if instance in asg')\r\n    \r\n    asgclient = boto3.client('autoscaling')\r\n    \r\n    response_asg = asgclient.describe_auto_scaling_instances(\r\n        InstanceIds=[\r\n        instanceid\r\n        ]\r\n    )\r\n    \r\n    if not response_asg['AutoScalingInstances']:\r\n        response_terminateinstance = client.terminate_instances(\r\n            InstanceIds=[\r\n            instanceid\r\n            ]\r\n        )\r\n    else:\r\n         response_stopinstance = client.stop_instances(\r\n            InstanceIds=[\r\n            instanceid\r\n            ]\r\n        )\r\n        \r\n         response_instanceA = client.get_waiter('instance_stopped').wait(\r\n            InstanceIds=[instanceid]\r\n        )\r\n    \r\n         print('5. Detach original volume')\r\n    \r\n         response_detach_volume = client.detach_volume(\r\n            VolumeId=ebsvolumeId\r\n        )\r\n\r\n         response_snapshotC = client.get_waiter('volume_available').wait(\r\n            VolumeIds=[ebsvolumeId]\r\n        )\r\n    \r\n         print('6. Delete original volume')\r\n    \r\n         response = client.delete_volume(\r\n            VolumeId=ebsvolumeId\r\n        )\r\n    \r\n         response_volumeA = client.get_waiter('volume_deleted').wait(\r\n            VolumeIds=[ebsvolumeId]\r\n        )\r\n    \r\n    print('7. Delete original snapshot')\r\n    \r\n    response = client.delete_snapshot(\r\n        SnapshotId=snapshotid\r\n    )"
-              InputPayload:
-                AutomationAssumeRole: '{{AutomationAssumeRole}}'
-                ebsvolumeId: '{{ebsvolumeId}}'
-                sourceregion: '{{sourceregion}}'
-                kmskeyArn: '{{kmskeyArn}}'
-
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [RDS.3] RDS DB instances should have encryption at-rest enabled
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  
-  RDSEncryptDBInstance:
-    Type: AWS::SSM::Document
-    Properties:
-      DocumentType: Automation
-      Name: Custom-FSBP-EncryptRDSDBInstance
-      Content:
-        schemaVersion: '0.3'
-        assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
-        parameters:
-          AutomationAssumeRole:
-            type: String
-            default: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
-          dbinstanceId:
-            type: String     
-          kmskeyArn:
-            type: String      
-        mainSteps:
-          - name: EncryptRDSDBInstance
-            action: 'aws:executeScript'
-            timeoutSeconds: 2000
-            inputs:
-              Runtime: python3.6
-              Handler: script_handler
-              Script: "def script_handler(events, context):\r\n  import boto3\r\n  import time\r\n  client = boto3.client('rds')\r\n  dbinstanceId = events['dbinstanceId']\r\n  kmskeyArn = events['kmskeyArn']\r\n    \r\n  response_snapshot = client.create_db_snapshot(\r\n      DBSnapshotIdentifier=\"fsbp-snapshot-\" + dbinstanceId,\r\n      DBInstanceIdentifier=dbinstanceId\r\n  )\r\n    \r\n  response_snapshotA = client.get_waiter('db_snapshot_available').wait(\r\n      DBSnapshotIdentifier='fsbp-snapshot-' + dbinstanceId,\r\n      DBInstanceIdentifier=dbinstanceId\r\n  )\r\n\r\n    \r\n  response_snapshotCopy = client.copy_db_snapshot(\r\n      SourceDBSnapshotIdentifier=\"fsbp-snapshot-\" + dbinstanceId,\r\n      TargetDBSnapshotIdentifier=\"fsbp-snapshot-encrypted-\" + dbinstanceId,\r\n      KmsKeyId=kmskeyArn,\r\n      CopyTags=True\r\n  )\r\n                \r\n  response_snapshotB = client.get_waiter('db_snapshot_available').wait(\r\n      DBSnapshotIdentifier='fsbp-snapshot-encrypted-' + dbinstanceId,\r\n      DBInstanceIdentifier=dbinstanceId\r\n  )\r\n\r\n  response_restore = client.restore_db_instance_from_db_snapshot(\r\n      DBInstanceIdentifier='fsbp-encrypted-' + dbinstanceId,\r\n      DBSnapshotIdentifier='fsbp-snapshot-encrypted-' + dbinstanceId\r\n  )\r\n\r\n  response_snapshotC = client.get_waiter('db_instance_available').wait(\r\n      DBInstanceIdentifier='fsbp-encrypted-' + dbinstanceId\r\n  )\r\n\r\n  response_delete1 =  client.delete_db_snapshot(\r\n      DBSnapshotIdentifier='fsbp-snapshot-' + dbinstanceId\r\n  )\r\n                \r\n  response_delete2 = client.get_waiter('db_snapshot_deleted').wait(\r\n      DBSnapshotIdentifier='fsbp-snapshot-' + dbinstanceId,\r\n      WaiterConfig={\r\n           'Delay': 5,\r\n           'MaxAttempts': 30\r\n      }\r\n  )\r\n\r\n  response_delete3 = client.delete_db_instance(\r\n      DBInstanceIdentifier=dbinstanceId,\r\n      SkipFinalSnapshot=True\r\n  )\r\n                \r\n  response_wait = client.get_waiter('db_instance_deleted').wait(\r\n      DBInstanceIdentifier=dbinstanceId\r\n  )\r\n                \r\n  response_newinstance = client.modify_db_instance( \r\n      DBInstanceIdentifier='fsbp-encrypted-' + dbinstanceId,\r\n      ApplyImmediately=True, \r\n      NewDBInstanceIdentifier=dbinstanceId\r\n  )\r\n                \r\n  time.sleep(60)\r\n\r\n  response_final = client.get_waiter('db_instance_available').wait(\r\n      DBInstanceIdentifier=dbinstanceId\r\n  )\r\n  \r\n"
-              InputPayload:
-                AutomationAssumeRole: '{{AutomationAssumeRole}}'
-                dbinstanceId: '{{dbinstanceId}}'
-                kmskeyArn: '{{kmskeyArn}}'
-
-
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.Lambda.2] Lambda functions should be in a VPC
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  
-  RestrictLambdaVPC:
-    Type: AWS::SSM::Document
-    Properties:
-      DocumentType: Automation
-      Name: Custom-RestrictLambdaVPC
+      Name: PCILambda2Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
@@ -1476,14 +1149,11 @@ Resources:
                 subnet2id: '{{subnet2id}}'
                 securitygroupid: '{{securitygroupid}}'
 
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-# [PCI.S3.3] S3 buckets should have cross-region replication enabled
-# -------------------------------------------------------------------------------------------------------------------------------------------------------
-  EnableS3Replication:
+  PCIS33Automation:
     Type: AWS::SSM::Document
     Properties:
       DocumentType: Automation
-      Name: Custom-EnableS3Replication
+      Name: PCIS33Automation
       Content:
         schemaVersion: '0.3'
         assumeRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AutomationAssumeRole}"
