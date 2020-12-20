@@ -21,12 +21,12 @@ These templates provide real time and automated remediations for each of the PCI
 
 ## How To Install
 
-1. **Template 1 of 2:** aws-pci-systemsmanagerautomations.yml
+1. **Template 1 of 2:** aws-security-hub-pci-remediations-template1.yml
 * Provisions AWS Systems Manager automation documents. These documents are used to provide automated remediations within the provisioned AWS Security Hub Action.
 * Provisions with fully built-in pre-reqs. No input parameters required. Simply install on the CloudFormation console (or CLI). Installs in approx 3-4 mins.
 * Leverages the secure vpc template as a nested template for PCI.Lambda.2 remediation. Create a bucket: s3-vpctemplates-US-REGION and upload the template in this bucket.
 
-2. **Template 2 of 2:** aws-pci-securityhubactions.yml
+2. **Template 2 of 2:** aws-security-hub-pci-remediations-template2.yml
 * Provisions AWS CloudWatch Evemts and AWS Security Hub Custom Actions. No input parameters. Simply install on the CloudFormation console (or CLI). Installs in approx 3-4 mins.
 * Leverages the output from the previous template specifically the AWS Systems Manager Automation documents
 
