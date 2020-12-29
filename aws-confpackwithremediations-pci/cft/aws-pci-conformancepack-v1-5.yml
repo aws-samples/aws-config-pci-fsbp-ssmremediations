@@ -1,0 +1,47 @@
+################################################################################
+#
+# PCI Conformance Pack with Remediations - API GW 
+# 
+# @kmmahaj
+#
+# License:
+# This code is made available under the MIT-0 license. See the LICENSE file.
+################################################################################
+
+Resources:
+  APIGWEndpointTypeCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: APIGWEndpointTypeCheck
+      Description: >-
+        Checks that your API Gateway Endpoint Configuration is Private
+      InputParameters:
+        endpointConfigurationTypes: 'PRIVATE'
+      Scope:
+        ComplianceResourceTypes:
+        - "AWS::ApiGateway::RestApi"
+      Source:
+        Owner: AWS
+        SourceIdentifier: API_GW_ENDPOINT_TYPE_CHECK
+  APIGWEndpointTypeCheckRemediation:
+    DependsOn: APIGWEndpointTypeCheck
+    Type: 'AWS::Config::RemediationConfiguration'
+    Properties:
+      ConfigRuleName: APIGWEndpointTypeCheck
+      ResourceType: "AWS::ApiGateway::RestApi"
+      TargetId: "Custom-APIGWEndpointTypeCheck"
+      TargetType: "SSM_DOCUMENT"
+      TargetVersion: "1"
+      Parameters:
+        AutomationAssumeRole:
+          StaticValue:
+            Values:
+              - arn:aws:iam::189837654402:role/automationassumerole-us-west-2
+      ExecutionControls:
+        SsmControls:
+          ConcurrentExecutionRatePercentage: 10
+          ErrorPercentage: 10
+      Automatic: True
+      MaximumAutomaticAttempts: 10
+      RetryAttemptSeconds: 600
+
