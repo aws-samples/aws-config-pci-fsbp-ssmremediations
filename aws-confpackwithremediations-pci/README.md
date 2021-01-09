@@ -55,11 +55,10 @@ The solution provides remediations for the following PCI checks:
 
 ## Solution Design
 
-![](images/arch-diagram1.png)
+![](images/confpackpci.png)
 
 ## Prerequisites
 1.	Custom AWS Config Conformance Packs - Set up prerequisites for deploying and building with both AWS Config Conformance Packs as well as custom AWS Config Conformance Packs with remediations. Refer to AWS documentation or this blog for pre-reqs - https://aws.amazon.com/blogs/mt/introducing-aws-config-conformance-packs/
-
 
 
 ## How To Install
