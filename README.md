@@ -4,10 +4,10 @@
 # Remediations for PCI DSS 3.2.1 and AWS Foundational Security Best Practices (FBSP) using AWS Config and Custom AWS Systems Manager Automation Documents
 
 1. **aws-configremediations-pci**
-* Provides custom AWS Systems Manager automation documents and AWS Config Remediations for AWS Foundational Security Best Practices (FSBP). Fully automated with CloudFormation (including pre-reqs). Installs in approx 3-4 mins.
+* Provides custom AWS Systems Manager automation documents and AWS Config Remediations for PCI DSS 3.2.1. Fully automated with CloudFormation (including pre-reqs). Installs in approx 3-4 mins.
 
 2. **aws-configremediations-fsbp**
-* Provides custom AWS Systems Manager automation documents and AWS Config Remediations for PCI DSS 3.2.1. Fully automated with CloudFormation (including pre-reqs). Installs in approx 3-4 mins.
+* Provides custom AWS Systems Manager automation documents and AWS Config Remediations for AWS Foundational Security Best Practices (FSBP). Fully automated with CloudFormation (including pre-reqs). Installs in approx 3-4 mins.
 
 3. **aws-confpackwithremediations-pci**
 * Provides custom AWS Systems Manager automation documents and AWS Config Remediations for PCI DSS 3.2.1 packaged as custom AWS Config Conformance Packs. 
