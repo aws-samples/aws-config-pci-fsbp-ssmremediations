@@ -4,17 +4,17 @@
 # Remediations for PCI DSS 3.2.1 and AWS Foundational Security Best Practices (FBSP) using AWS Config and Custom AWS Systems Manager Automation Documents
 
 1. **aws-configremediations-pci**
-* Provides custom AWS Systems Manager automation documents and AWS Config Remediations for AWS Foundational Security Best Practices (FSBP). Fully auotomated with CloudFormation (including pre-reqs). Installs in approx 3-4 mins.
+Provides custom AWS Systems Manager automation documents and AWS Config Remediations for AWS Foundational Security Best Practices (FSBP). Fully auotomated with CloudFormation (including pre-reqs). Installs in approx 3-4 mins.
 
 2. **aws-configremediations-fsbp**
-* Provides custom AWS Systems Manager automation documents and AWS Config Remediations for PCI DSS 3.2.1. Fully auotomated with CloudFormation (including pre-reqs). Installs in approx 3-4 mins.
+Provides custom AWS Systems Manager automation documents and AWS Config Remediations for PCI DSS 3.2.1. Fully auotomated with CloudFormation (including pre-reqs). Installs in approx 3-4 mins.
 
 3. **aws-confpackwithremediations-pci**
-* Provides custom AWS Systems Manager automation documents and AWS Config Remediations for PCI DSS 3.2.1 packaged as custom AWS Config Conformance Packs. 
+Provides custom AWS Systems Manager automation documents and AWS Config Remediations for PCI DSS 3.2.1 packaged as custom AWS Config Conformance Packs. 
 
 4. **aws-devsecops-conformancepack-pci**
 * Provides a DevSecOps pipeline for implementing automated remediations for PCI DSS 3.2.1 using custom AWS Config Conformance Packs with custom AWS Systems Manager automation documents.
-* ![DevSecops for Automated Remediations with custom AWS Config Conformance Packs](https://aws.amazon.com/blogs/mt/devsecops-auto-healing-pci-dss-3-2-1-violations-aws-using-custom-aws-config-conformance-packs-aws-systems-manager-aws-codepipeline/)
+**<https://aws.amazon.com/blogs/mt/devsecops-auto-healing-pci-dss-3-2-1-violations-aws-using-custom-aws-config-conformance-packs-aws-systems-manager-aws-codepipeline/>**
 
 
 
