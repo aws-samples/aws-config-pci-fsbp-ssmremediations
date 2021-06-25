@@ -34,6 +34,11 @@ Parameters:
     Type: String
     Default: master
 
+  ConformancePackStagingBucket:
+    Description: Conformance Pack Staging Bucket
+    Type: String
+    Default: s3-pciautohealconfpack-<AccountId>-<Region>
+
 ## Resources
 Resources:
 
@@ -81,33 +86,6 @@ Resources:
             Condition:
               Bool:
                 'aws:SecureTransport': false
-
-# Bucket where the source templates get copied during pipeline execution (CodeBuild)
-# CodeBuild uses this bucket as input to CloudFormation stackset that then deploys these source templates to spoke accounts
-  ConformancePackStagingBucket:
-    Type: 'AWS::S3::Bucket'
-    Properties:
-      BucketName: !Sub "s3-pciautohealconfpack-${AWS::AccountId}-${AWS::Region}"
-      AccessControl: BucketOwnerFullControl
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
-  ConformancePackStagingBucketPolicy:
-    Type: 'AWS::S3::BucketPolicy'
-    Properties:
-      Bucket: !Ref ConformancePackStagingBucket
-      PolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Sid: Allow source code access from this bucket
-            Effect: Allow
-            Principal: '*'
-            Action: 's3:*'
-            Resource:
-              - !Sub arn:aws:s3:::${ConformancePackStagingBucket}
-              - !Sub arn:aws:s3:::${ConformancePackStagingBucket}/*
-  
 
   AmazonCloudWatchEventRole:
     Type: 'AWS::IAM::Role'
