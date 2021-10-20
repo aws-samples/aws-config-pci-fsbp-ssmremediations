@@ -54,6 +54,3 @@ The solution provides remediations for the following PCI checks:
 * Leverages the output from the previous template specifically the AWS Systems Manager Automation documents
 
 
-## Author
-
-Kanishk Mahajan; kmmahaj@amazon.com
