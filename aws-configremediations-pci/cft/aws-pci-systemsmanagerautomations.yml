@@ -236,35 +236,6 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
-# S3 Bucket to store CloudTrail logs
-  CISS3CloudTrailBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub "s3-cis-${AWS::AccountId}-${AWS::Region}"
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
-      AccessControl: BucketOwnerFullControl
-      LifecycleConfiguration:
-        Rules:
-          -
-            AbortIncompleteMultipartUpload:
-              DaysAfterInitiation: 3
-            NoncurrentVersionExpirationInDays: 3
-            Status: Enabled
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-      Tags:
-        -
-          Key: Description
-          Value: S3 Bucket for CloudTrail Logs
-      VersioningConfiguration:
-        Status: Enabled
-
 # Bucket Policy for S3 Bucket used for Bucket Logging. Restrict to allow access to only SSL transport.
   S3LoggingBucketPolicy:
     Type: AWS::S3::BucketPolicy
