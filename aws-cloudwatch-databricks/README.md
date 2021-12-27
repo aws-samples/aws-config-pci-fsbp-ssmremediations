@@ -22,7 +22,7 @@
 
 ## Install
 
-1. 1-click automation. Launch the **[aws-databricks-cloudwatchcontributorinsights.yml](https://aws.amazon.com/s3/)** template. Provide input parameters:
+1. 1-click automation. Launch the **[aws-databricks-cloudwatchcontributorinsights.yml](https://github.com/aws-samples/aws-config-pci-fsbp-ssmremediations/blob/main/aws-cloudwatch-databricks/cft/aws-databricks-cloudwatchcontributorinsights.yml)** template. Provide input parameters:
 	1. Name of the CloudWatch Log group that is configured for your VPC Flow Logs (Required)
 	2. Network identifier for the Elastic Network Interface of your VPC Endpoint (Optional)
 	2. Private IP address of the NAT Gateway (Optional)
