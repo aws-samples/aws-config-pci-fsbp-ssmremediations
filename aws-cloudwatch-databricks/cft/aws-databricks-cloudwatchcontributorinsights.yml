@@ -42,12 +42,12 @@ Parameters:
   NATInstancePrivateIP:
     Description: Private IP address of the NAT instance
     Type: String
-    Default: '10.33.72.61'
+    Default: '100.0.0.1'
 
   NATGWPrivateIP:
     Description: Private IP address of the NAT GW
     Type: String
-    Default: '10.33.72.61'
+    Default: '100.0.0.1'
  
   EmailAddress:
     Description: Email Address for notifications
@@ -58,6 +58,11 @@ Parameters:
     Description: SNS Topic Name
     Type: String
     Default: NetworkSNS
+
+Outputs:
+  OutputDashboardURI:
+    Description: Link to the CloudWatch Dashboard
+    Value: !Sub 'https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${DatabricksCWDashboard}'
 
 Conditions:
 
@@ -74,12 +79,12 @@ Conditions:
   CreateNATInstanceRule: !Not 
     - !Equals 
       - !Ref NATInstancePrivateIP
-      - ''
+      - '100.0.0.1'
   
   CreateNATGatewayRule: !Not 
     - !Equals 
       - !Ref NATGWPrivateIP
-      - ''
+      - '100.0.0.1'
 
   CreateDashboardRule: !Or 
     - !Condition CreateVPCEndpointRule
@@ -87,11 +92,6 @@ Conditions:
     - !Condition CreateNATInstanceRule
     - !Condition CreateNATGatewayRule
     
-
-Outputs:
-  OutputDashboardURI:
-    Description: Link to the CloudWatch Dashboard
-    Value: !Sub 'https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${DatabricksCWDashboard}'
 
 Resources:
 
@@ -118,7 +118,6 @@ Resources:
 
   VPCEndpointBytesInsightRule:
     Type: AWS::CloudWatch::InsightRule
-    Condition: CreateVPCEndpointRule
     Properties:
       RuleBody: !Sub |
         {
@@ -163,7 +162,6 @@ Resources:
 
   NATInstanceBytesInsightRule:
     Type: AWS::CloudWatch::InsightRule
-    Condition: CreateNATInstanceRule
     Properties:
       RuleBody: !Sub |
         {
@@ -208,7 +206,6 @@ Resources:
 
   NATGatewayBytesInsightRule:
     Type: AWS::CloudWatch::InsightRule
-    Condition: CreateNATGatewayRule
     Properties:
       RuleBody: !Sub |
         {
@@ -256,7 +253,6 @@ Resources:
 
   PrivateLinkBytesInsightRule:
     Type: AWS::CloudWatch::InsightRule
-    Condition: CreatePrivateLinkRule
     Properties:
       RuleBody: !Sub |
         {
@@ -303,7 +299,6 @@ Resources:
 
   PrivateLinkConnectionsInsightRule:
     Type: AWS::CloudWatch::InsightRule
-    Condition: CreatePrivateLinkRule
     Properties:
       RuleBody: !Sub |
         {
@@ -355,7 +350,6 @@ Resources:
 
   PrivateLinkRejectConnectionsInsightRule:
     Type: AWS::CloudWatch::InsightRule
-    Condition: CreatePrivateLinkRule
     Properties:
       RuleBody: !Sub |
         {
@@ -410,7 +404,7 @@ Resources:
 
   PrivateLinkBytesTransferredAlarm:
     Type: 'AWS::CloudWatch::Alarm'
-    Condition: CreatePrivateLinkRule
+    DependsOn: PrivateLinkBytesInsightRule
     Properties:
       EvaluationPeriods: '1'
       AlarmDescription: Alarms when there is a high bytes transfer
@@ -429,14 +423,8 @@ Resources:
 #====================================================================================================================
 # Centralized CloudWatch Dashboard
 #====================================================================================================================
-
   DatabricksCWDashboard:
     Type: AWS::CloudWatch::Dashboard
-    Condition: CreateDashboardRule
-    DependsOn:
-      - PrivateLinkBytesInsightRule
-      - NATGatewayBytesInsightRule
-      - NATInstanceBytesInsightRule
     Properties:
       DashboardBody: !Sub |
         {
@@ -471,7 +459,7 @@ Resources:
                         }
                     }
                 },
-                {
+                         {
                     "type": "metric",
                     "x": 0,
                     "y": 12,
@@ -495,7 +483,67 @@ Resources:
                             }
                         },
                           "region": "${AWS::Region}",
-                        "title": "Bytes Transfer - Databricks data plane to Databricks control plane",
+                        "title": "Bytes Transfer - AWS Databricks to Databricks Control Plane",
+                        "legend": {
+                            "position": "right"
+                        }
+                    }
+                },
+                {
+                    "type": "metric",
+                    "x": 0,
+                    "y": 12,
+                    "width": 12,
+                    "height": 6,
+                    "properties": {
+                        "period": 60,
+                        "insightRule": {
+                            "maxContributorCount": 50,
+                            "orderBy": "Sum",
+                            "ruleName": "${NATInstanceBytesInsightRule.RuleName}"
+                        },
+                        "stacked": false,
+                        "view": "timeSeries",
+                        "yAxis": {
+                            "left": {
+                                "showUnits": false
+                            },
+                            "right": {
+                                "showUnits": false
+                            }
+                        },
+                          "region": "${AWS::Region}",
+                        "title": "Bytes Transfer - Azure to AWS Databricks",
+                        "legend": {
+                            "position": "right"
+                        }
+                    }
+                },
+                {
+                    "type": "metric",
+                    "x": 0,
+                    "y": 12,
+                    "width": 12,
+                    "height": 6,
+                    "properties": {
+                        "period": 60,
+                        "insightRule": {
+                            "maxContributorCount": 50,
+                            "orderBy": "Sum",
+                            "ruleName": "${NATGatewayBytesInsightRule.RuleName}"
+                        },
+                        "stacked": false,
+                        "view": "timeSeries",
+                        "yAxis": {
+                            "left": {
+                                "showUnits": false
+                            },
+                            "right": {
+                                "showUnits": false
+                            }
+                        },
+                          "region": "${AWS::Region}",
+                        "title": "Bytes Transfer - AWS Databricks to Databricks Control Plane",
                         "legend": {
                             "position": "right"
                         }
