@@ -1,0 +1,291 @@
+# -------------------------------------------------------------------------------------------------
+#
+# Real time visualization and monitoring of network bytes transferred via VPC endpoints, NAT Gateway and NAT instances 
+# used for Databricks data transfer
+# ---Provisions CloudWatch Contributor Insights Rules for network monitoring.
+# 
+# 
+# @kmmahaj
+# ---------------------------------------------------------------------------------------------------
+
+AWSTemplateFormatVersion: 2010-09-09
+Description: Databricks network transfer visualizations using CloudWatch Contributor Insights
+
+Parameters:
+
+  ContributorInsightRuleState:
+      Type: String
+      Description: Select to enable or disable the Contributor Insight Rules on Creation.
+      Default: ENABLED
+      AllowedValues:
+        - ENABLED
+        - DISABLED
+
+  VPCFlowLogsCloudWatchLogGroup:
+    Description: Name of the CloudWatch Log group for the VPC Flow logs
+    Type: String
+    Default: vpcloggroup-vpc1
+
+  VPCEndpointInterfaceId:
+    Description:  ENI identifier for the VPC endpoint (Kinesis)
+    Type: String
+    Default: eni-0fb59682b9b3c4cb3
+
+  NATInstancePrivateIP:
+    Description:  Private IP address of the NAT instance
+    Type: String
+    Default: '10.33.72.61'
+
+  NATGWPrivateIP:
+    Description: Private IP address of the NAT GW
+    Type: String
+    Default: '10.33.72.61'
+
+
+Outputs:
+  OutputDashboardURI:
+    Description: Link to the CloudWatch Dashboard
+    Value: !Sub 'https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${DatabricksCWDashboard}'
+
+Resources:
+
+#===============================================================================================================================
+# VPC Interface Endpoint (Kinesis) data transfer monitoring and visualization from AWS Kinesis to AWS Databricks data plane
+# (Sum of bytes transferred indexed on source and destination ip) 
+#===============================================================================================================================
+
+  VPCEndpointBytesTransferredInsightRule:
+    Type: AWS::CloudWatch::InsightRule
+    Properties:
+      RuleBody: !Sub |
+        {
+            "Schema": {
+                "Name": "CloudWatchLogRule",
+                "Version": 1
+            },
+            "LogGroupNames": [
+                "${VPCFlowLogsCloudWatchLogGroup}"
+            ],
+            "LogFormat": "CLF",
+            "Fields": {
+                "4": "srcaddr",
+                "5": "dstaddr",
+                "3": "interface_id",
+                "10": "bytes"
+            },
+            "Contribution": {
+                "Filters": [
+                    {
+                        "In": [
+                            "${VPCEndpointInterfaceId}"
+                        ],
+                        "Match": "interface_id"
+                    }
+                ],                  
+                "Keys": [
+                    "srcaddr",
+                    "dstaddr"
+                ],
+                "ValueOf": "bytes"
+            },
+            "AggregateOn": "Sum"
+        }
+      RuleName: VPCEndpointBytesInsightRule
+      RuleState: !Ref ContributorInsightRuleState    
+
+#===============================================================================================================================
+# NAT instance data transfer monitoring and visualization - Azure Databricks to AWS Databricks data plane
+# (Sum of bytes transferred by source and destination ip) 
+#===============================================================================================================================
+
+  NATInstanceBytesTransferredInsightRule:
+    Type: AWS::CloudWatch::InsightRule
+    Properties:
+      RuleBody: !Sub |
+        {
+            "Schema": {
+                "Name": "CloudWatchLogRule",
+                "Version": 1
+            },
+            "LogGroupNames": [
+                "${VPCFlowLogsCloudWatchLogGroup}"
+            ],
+            "LogFormat": "CLF",
+            "Fields": {
+                "4": "srcaddr",
+                "5": "dstaddr",
+                "3": "interface_id",
+                "10": "bytes"
+            },
+            "Contribution": {
+                "Filters": [
+                    {
+                        "In": [
+                            "${NATInstancePrivateIP}"
+                        ],
+                        "Match": "dstaddr"
+                    }
+                ],                  
+                "Keys": [
+                    "srcaddr",
+                    "dstaddr"
+                ],
+                "ValueOf": "bytes"
+            },
+            "AggregateOn": "Sum"
+        }
+      RuleName: NATInstanceBytesInsightRule
+      RuleState: !Ref ContributorInsightRuleState    
+
+#===============================================================================================================================
+# NAT Gateway data transfer monitoring and visualization - outbound from AWS Databricks data plane (to Databricks control plane)
+# (Sum of bytes transferred indexed on source and destination ip) 
+#===============================================================================================================================
+
+  NATGatewayBytesTransferredInsightRule:
+    Type: AWS::CloudWatch::InsightRule
+    Properties:
+      RuleBody: !Sub |
+        {
+            "Schema": {
+                "Name": "CloudWatchLogRule",
+                "Version": 1
+            },
+            "LogGroupNames": [
+                "${VPCFlowLogsCloudWatchLogGroup}"
+            ],
+            "LogFormat": "CLF",
+            "Fields": {
+                "4": "srcaddr",
+                "5": "dstaddr",
+                "3": "interface_id",
+                "10": "bytes"
+            },
+            "Contribution": {
+                "Filters": [
+                    {
+                        "In": [
+                            "${NATGWPrivateIP}"
+                        ],
+                        "Match": "srcaddr"
+                    }
+                ],                  
+                "Keys": [
+                    "srcaddr",
+                    "dstaddr"
+                ],
+                "ValueOf": "bytes"
+            },
+            "AggregateOn": "Sum"
+        }
+      RuleName: NATGatewayBytesInsightRule
+      RuleState: !Ref ContributorInsightRuleState
+
+#====================================================================================================================
+# Centralized CloudWatch Dashboard
+#====================================================================================================================
+
+  DatabricksCWDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    DependsOn:
+      - VPCEndpointBytesTransferredInsightRule
+      - NATInstanceBytesTransferredInsightRule
+      - NATGatewayBytesTransferredInsightRule
+    Properties:
+      DashboardBody: !Sub |
+        {
+            "widgets": [
+                {
+                    "type": "metric",
+                    "x": 0,
+                    "y": 12,
+                    "width": 12,
+                    "height": 6,
+                    "properties": {
+                        "period": 60,
+                        "insightRule": {
+                            "maxContributorCount": 50,
+                            "orderBy": "Sum",
+                            "ruleName": "${VPCEndpointBytesTransferredInsightRule.RuleName}"
+                        },
+                        "stacked": false,
+                        "view": "timeSeries",
+                        "yAxis": {
+                            "left": {
+                                "showUnits": false
+                            },
+                            "right": {
+                                "showUnits": false
+                            }
+                        },
+                          "region": "${AWS::Region}",
+                        "title": "VPC Endpoints Bytes - Kinesis to Databricks",
+                        "legend": {
+                            "position": "right"
+                        }
+                    }
+                },
+                {
+                    "type": "metric",
+                    "x": 0,
+                    "y": 12,
+                    "width": 12,
+                    "height": 6,
+                    "properties": {
+                        "period": 60,
+                        "insightRule": {
+                            "maxContributorCount": 50,
+                            "orderBy": "Sum",
+                            "ruleName": "${NATInstanceBytesTransferredInsightRule.RuleName}"
+                        },
+                        "stacked": false,
+                        "view": "timeSeries",
+                        "yAxis": {
+                            "left": {
+                                "showUnits": false
+                            },
+                            "right": {
+                                "showUnits": false
+                            }
+                        },
+                          "region": "${AWS::Region}",
+                        "title": "Bytes Transfer - Azure to AWS Databricks",
+                        "legend": {
+                            "position": "right"
+                        }
+                    }
+                },
+                {
+                    "type": "metric",
+                    "x": 0,
+                    "y": 12,
+                    "width": 12,
+                    "height": 6,
+                    "properties": {
+                        "period": 60,
+                        "insightRule": {
+                            "maxContributorCount": 50,
+                            "orderBy": "Sum",
+                            "ruleName": "${NATGatewayBytesTransferredInsightRule.RuleName}"
+                        },
+                        "stacked": false,
+                        "view": "timeSeries",
+                        "yAxis": {
+                            "left": {
+                                "showUnits": false
+                            },
+                            "right": {
+                                "showUnits": false
+                            }
+                        },
+                          "region": "${AWS::Region}",
+                        "title": "Bytes Transfer - AWS Databricks to Databricks Control Plane",
+                        "legend": {
+                            "position": "right"
+                        }
+                    }
+                }
+            ]
+         }
+      DashboardName: Databricks-NetworkMonitoring-Dashboard
+      

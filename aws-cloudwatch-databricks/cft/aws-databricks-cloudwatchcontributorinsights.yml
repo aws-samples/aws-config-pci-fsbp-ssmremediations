@@ -3,7 +3,9 @@
 #
 # Real time visualization and monitoring of network bytes transferred via VPC endpoints, NAT Gateway and NAT instances 
 # used for Databricks data transfer
-# ---Provisions CloudWatch Contributor Insights Rules for network monitoring.
+# ---Provisions CloudWatch Contributor Insights Rules for time series analysis of network bytes transferred
+# ---Provisions CloudWatch Metrics based on Contributor Insights rules
+# ---Provisions CloudWatch dashboard for visualizing time series analysis based on Contributor Insights rules
 # 
 # 
 # @kmmahaj
@@ -28,12 +30,17 @@ Parameters:
     Default: vpcloggroup-vpc1
 
   VPCEndpointInterfaceId:
-    Description:  ENI identifier for the VPC endpoint (Kinesis)
+    Description: ENI identifier (eni-xxxx) for the VPC endpoint (Kinesis)
+    Type: String
+    Default: eni-0fb59682b9b3c4cb3
+
+  PrivateLinkVPCEndpointInterfaceId:
+    Description: ENI identifier (eni-xxxx) for the Consumer side VPC endpoint (i.e. in the Consumer Managed VPC for Databricks) 
     Type: String
     Default: eni-0fb59682b9b3c4cb3
 
   NATInstancePrivateIP:
-    Description:  Private IP address of the NAT instance
+    Description: Private IP address of the NAT instance
     Type: String
     Default: '10.33.72.61'
 
@@ -41,7 +48,45 @@ Parameters:
     Description: Private IP address of the NAT GW
     Type: String
     Default: '10.33.72.61'
+ 
+  EmailAddress:
+    Description: Email Address for notifications
+    Type: String
+    Default: kmmahaj@amazon.com
 
+  TopicName:
+    Description: SNS Topic Name
+    Type: String
+    Default: NetworkSNS
+
+Conditions:
+
+  CreateVPCEndpointRule: !Not 
+    - !Equals 
+      - !Ref VPCEndpointInterfaceId
+      - ''
+  
+  CreatePrivateLinkRule: !Not 
+    - !Equals 
+      - !Ref PrivateLinkVPCEndpointInterfaceId
+      - ''
+  
+  CreateNATInstanceRule: !Not 
+    - !Equals 
+      - !Ref NATInstancePrivateIP
+      - ''
+  
+  CreateNATGatewayRule: !Not 
+    - !Equals 
+      - !Ref NATGWPrivateIP
+      - ''
+
+  CreateDashboardRule: !Or 
+    - !Condition CreateVPCEndpointRule
+    - !Condition CreatePrivateLinkRule
+    - !Condition CreateNATInstanceRule
+    - !Condition CreateNATGatewayRule
+    
 
 Outputs:
   OutputDashboardURI:
@@ -50,13 +95,30 @@ Outputs:
 
 Resources:
 
+# SNS topic for CloudWatch Alarm Notifications
+  AlarmNotificationTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      DisplayName: !Ref TopicName
+      TopicName: !Ref TopicName
+
+# Email Subscription for SNS topic
+  AlarmEmailSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      Protocol: email
+      Endpoint: !Ref EmailAddress
+      TopicArn: !Ref AlarmNotificationTopic
+
+
 #===============================================================================================================================
 # VPC Interface Endpoint (Kinesis) data transfer monitoring and visualization from AWS Kinesis to AWS Databricks data plane
 # (Sum of bytes transferred indexed on source and destination ip) 
 #===============================================================================================================================
 
-  VPCEndpointBytesTransferredInsightRule:
+  VPCEndpointBytesInsightRule:
     Type: AWS::CloudWatch::InsightRule
+    Condition: CreateVPCEndpointRule
     Properties:
       RuleBody: !Sub |
         {
@@ -99,8 +161,9 @@ Resources:
 # (Sum of bytes transferred by source and destination ip) 
 #===============================================================================================================================
 
-  NATInstanceBytesTransferredInsightRule:
+  NATInstanceBytesInsightRule:
     Type: AWS::CloudWatch::InsightRule
+    Condition: CreateNATInstanceRule
     Properties:
       RuleBody: !Sub |
         {
@@ -143,8 +206,9 @@ Resources:
 # (Sum of bytes transferred indexed on source and destination ip) 
 #===============================================================================================================================
 
-  NATGatewayBytesTransferredInsightRule:
+  NATGatewayBytesInsightRule:
     Type: AWS::CloudWatch::InsightRule
+    Condition: CreateNATGatewayRule
     Properties:
       RuleBody: !Sub |
         {
@@ -182,16 +246,197 @@ Resources:
       RuleName: NATGatewayBytesInsightRule
       RuleState: !Ref ContributorInsightRuleState
 
+
+#===============================================================================================================================
+# Private Link data transfer monitoring and visualization from Databricks data plane to Databricks control plane
+#  - Monitors total data transfer from the Consumer Endpoint
+#  - This should replace NAT GW usage
+# (Sum of bytes transferred from the Consumer Endpoint for each sourceaddr-destaddr pair)
+#===============================================================================================================================
+
+  PrivateLinkBytesInsightRule:
+    Type: AWS::CloudWatch::InsightRule
+    Condition: CreatePrivateLinkRule
+    Properties:
+      RuleBody: !Sub |
+        {
+            "Schema": {
+                "Name": "CloudWatchLogRule",
+                "Version": 1
+            },
+            "LogGroupNames": [
+                "${VPCFlowLogsCloudWatchLogGroup}"
+            ],
+            "LogFormat": "CLF",
+            "Fields": {
+                "4": "srcaddr",
+                "5": "dstaddr",
+                "3": "interface_id",
+                "10": "bytes"
+            },
+            "Contribution": {
+                "Filters": [
+                    {
+                        "In": [
+                            "${PrivateLinkVPCEndpointInterfaceId}"
+                        ],
+                        "Match": "interface_id"
+                    }
+                ],                  
+                "Keys": [
+                    "srcaddr",
+                    "dstaddr"
+                ],
+                "ValueOf": "bytes"
+            },
+            "AggregateOn": "Sum"
+        }
+      RuleName: PrivateLinkBytesInsightRule
+      RuleState: !Ref ContributorInsightRuleState    
+
+#===============================================================================================================================
+# Private Link data transfer monitoring and visualization from Databricks data plane to Databricks control plane
+#  - Monitors total # of connections from the Consumer Endpoint
+#  - This should replace NAT GW usage
+# (Total # of TCP connections from the Consumer Endpoint from each source address)
+#===============================================================================================================================
+
+  PrivateLinkConnectionsInsightRule:
+    Type: AWS::CloudWatch::InsightRule
+    Condition: CreatePrivateLinkRule
+    Properties:
+      RuleBody: !Sub |
+        {
+            "Schema": {
+                "Name": "CloudWatchLogRule",
+                "Version": 1
+            },
+            "LogGroupNames": [
+                "${VPCFlowLogsCloudWatchLogGroup}"
+            ],
+            "LogFormat": "CLF",
+            "Fields": {
+                "4": "srcaddr",
+                "5": "dstaddr",
+                "3": "interface_id",
+                "8": "protocol",
+                "10": "bytes",
+                "13": "action"
+            },
+            "Contribution": {
+                "Filters": [
+                    {
+                        "In": [
+                            "${PrivateLinkVPCEndpointInterfaceId}"
+                        ],
+                        "Match": "interface_id"
+                    },
+                    {
+                        "Match": "protocol",
+                        "EqualTo": 6
+                    }
+                ],                  
+                "Keys": [
+                    "interface_id",
+                    "srcaddr"
+                ]
+            },
+            "AggregateOn": "Sum"
+        }
+      RuleName: PrivateLinkConnectionsInsightRule
+      RuleState: !Ref ContributorInsightRuleState    
+
+#===============================================================================================================================
+# Private Link data transfer monitoring and visualization from Databricks data plane to Databricks control plane
+#  - Monitors total # of connections from the Consumer Endpoint
+#  - This should replace NAT GW usage
+# (Total # of TCP connections that were rejected from the Consumer Endpoint from each source address)
+#===============================================================================================================================
+
+  PrivateLinkRejectConnectionsInsightRule:
+    Type: AWS::CloudWatch::InsightRule
+    Condition: CreatePrivateLinkRule
+    Properties:
+      RuleBody: !Sub |
+        {
+            "Schema": {
+                "Name": "CloudWatchLogRule",
+                "Version": 1
+            },
+            "LogGroupNames": [
+                "${VPCFlowLogsCloudWatchLogGroup}"
+            ],
+            "LogFormat": "CLF",
+            "Fields": {
+                "4": "srcaddr",
+                "5": "dstaddr",
+                "3": "interface_id",
+                "8": "protocol",
+                "10": "bytes",
+                "13": "action"
+            },
+            "Contribution": {
+                "Filters": [
+                    {
+                        "In": [
+                            "${PrivateLinkVPCEndpointInterfaceId}"
+                        ],
+                        "Match": "interface_id"
+                    },
+                    {
+                        "Match": "protocol",
+                        "EqualTo": 6
+                    },
+                    {
+                        "In": [
+                            "REJECT"
+                        ],
+                        "Match": "action"
+                    }
+                ],                  
+                "Keys": [
+                    "interface_id",
+                    "srcaddr"
+                ]
+            },
+            "AggregateOn": "Sum"
+        }
+      RuleName: PrivateLinkRejectConnectionsInsightRule
+      RuleState: !Ref ContributorInsightRuleState    
+
+#====================================================================================================================
+# CloudWatch Metrics and CloudWatch Alarms based on PrivateLink CloudWatch Contributor Insights Rule
+#====================================================================================================================
+
+  PrivateLinkBytesTransferredAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Condition: CreatePrivateLinkRule
+    Properties:
+      EvaluationPeriods: '1'
+      AlarmDescription: Alarms when there is a high bytes transfer
+      AlarmName: 'PrivateLinkHighBytesTransferAlarm'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 1000
+      AlarmActions:
+        - !Ref AlarmNotificationTopic
+      Metrics: 
+        - Expression: INSIGHT_RULE_METRIC("PrivateLinkBytesInsightRule", "Sum")
+          Id: m1
+          Period: 60
+          Label: High_Bytes_Transfer
+          ReturnData: True
+        
 #====================================================================================================================
 # Centralized CloudWatch Dashboard
 #====================================================================================================================
 
   DatabricksCWDashboard:
     Type: AWS::CloudWatch::Dashboard
+    Condition: CreateDashboardRule
     DependsOn:
-      - VPCEndpointBytesTransferredInsightRule
-      - NATInstanceBytesTransferredInsightRule
-      - NATGatewayBytesTransferredInsightRule
+      - PrivateLinkBytesInsightRule
+      - NATGatewayBytesInsightRule
+      - NATInstanceBytesInsightRule
     Properties:
       DashboardBody: !Sub |
         {
@@ -207,7 +452,7 @@ Resources:
                         "insightRule": {
                             "maxContributorCount": 50,
                             "orderBy": "Sum",
-                            "ruleName": "${VPCEndpointBytesTransferredInsightRule.RuleName}"
+                            "ruleName": "${VPCEndpointBytesInsightRule.RuleName}"
                         },
                         "stacked": false,
                         "view": "timeSeries",
@@ -237,7 +482,7 @@ Resources:
                         "insightRule": {
                             "maxContributorCount": 50,
                             "orderBy": "Sum",
-                            "ruleName": "${NATInstanceBytesTransferredInsightRule.RuleName}"
+                            "ruleName": "${PrivateLinkBytesInsightRule.RuleName}"
                         },
                         "stacked": false,
                         "view": "timeSeries",
@@ -250,37 +495,7 @@ Resources:
                             }
                         },
                           "region": "${AWS::Region}",
-                        "title": "Bytes Transfer - Azure to AWS Databricks",
-                        "legend": {
-                            "position": "right"
-                        }
-                    }
-                },
-                {
-                    "type": "metric",
-                    "x": 0,
-                    "y": 12,
-                    "width": 12,
-                    "height": 6,
-                    "properties": {
-                        "period": 60,
-                        "insightRule": {
-                            "maxContributorCount": 50,
-                            "orderBy": "Sum",
-                            "ruleName": "${NATGatewayBytesTransferredInsightRule.RuleName}"
-                        },
-                        "stacked": false,
-                        "view": "timeSeries",
-                        "yAxis": {
-                            "left": {
-                                "showUnits": false
-                            },
-                            "right": {
-                                "showUnits": false
-                            }
-                        },
-                          "region": "${AWS::Region}",
-                        "title": "Bytes Transfer - AWS Databricks to Databricks Control Plane",
+                        "title": "Bytes Transfer - Databricks data plane to Databricks control plane",
                         "legend": {
                             "position": "right"
                         }
