@@ -2,7 +2,8 @@
 # -------------------------------------------------------------------------------------------------
 #
 # Time series network monitoring and visualization for AWS PrivateLink using Amazon CloudWatch Contributor Insights
-# ---Provisions CloudWatch Contributor Insights Rules for time series analysis of network bytes transferred
+# ---Provisions CloudWatch Contributor Insights Rules for time series analysis of network bytes transferred,
+#       active/rejected connections and top 10 contributors
 # ---Provisions CloudWatch Metrics based on Contributor Insights rules
 # ---Provisions CloudWatch dashboard for visualizing time series analysis based on Contributor Insights rules
 # 
@@ -145,9 +146,8 @@ Resources:
 
 
 #===============================================================================================================================
-# Private Link data transfer monitoring and visualization from Databricks data plane to Databricks control plane
-#  - Monitors total # of connections from the Consumer Endpoint
-# (Total # of TCP connections from the Consumer Endpoint from each source address)
+#  - Monitors source ip addresses from the Consumer Endpoint that made connection requests
+# (Top contributors for establishing connections by source IP  - i.e which source IPs from the Consumer Endpoint initiated the most TCP connections.)
 #===============================================================================================================================
 
   PrivateLinkConnectionsRule:
@@ -169,6 +169,7 @@ Resources:
                 "3": "interface_id",
                 "8": "protocol",
                 "10": "bytes",
+                "23": "tcp-flag",
                 "13": "action"
             },
             "Contribution": {
@@ -182,22 +183,28 @@ Resources:
                     {
                         "Match": "protocol",
                         "EqualTo": 6
-                    }
+                    },
+                    {
+                        "Match": "tcp-flag",
+                        "StartsWith": [
+                                    "2",
+                                    "3",
+                                    "19"
+                        ]
+                    }       
                 ],                  
                 "Keys": [
-                    "interface_id",
                     "srcaddr"
                 ]
             },
-            "AggregateOn": "Sum"
+            "AggregateOn": "Count"
         }
       RuleName: PrivateLinkConnectionsRule
       RuleState: !Ref ContributorInsightRuleState    
 
 #===============================================================================================================================
-# Private Link data transfer monitoring and visualization from Databricks data plane to Databricks control plane
-#  - Monitors total # of connections from the Consumer Endpoint
-# (Total # of TCP connections that were rejected from the Consumer Endpoint from each source address)
+#  - Monitors source ip addresses from the Consumer Endpoint whose connection requests were rejected
+# ( Top-N contributors by Source IP address and port where the action was rejected. )
 #===============================================================================================================================
 
   PrivateLinkRejectConnectionsRule:
@@ -217,6 +224,7 @@ Resources:
                 "4": "srcaddr",
                 "5": "dstaddr",
                 "3": "interface_id",
+                "7": "dstport",
                 "8": "protocol",
                 "10": "bytes",
                 "13": "action"
@@ -230,10 +238,6 @@ Resources:
                         "Match": "interface_id"
                     },
                     {
-                        "Match": "protocol",
-                        "EqualTo": 6
-                    },
-                    {
                         "In": [
                             "REJECT"
                         ],
@@ -241,11 +245,11 @@ Resources:
                     }
                 ],                  
                 "Keys": [
-                    "interface_id",
+                    "dstport",
                     "srcaddr"
                 ]
             },
-            "AggregateOn": "Sum"
+            "AggregateOn": "Count"
         }
       RuleName: PrivateLinkRejectConnectionsRule
       RuleState: !Ref ContributorInsightRuleState    
@@ -259,20 +263,42 @@ Resources:
     DependsOn: VPCEndpointConsumerBytesRule
     Properties:
       EvaluationPeriods: '1'
-      AlarmDescription: Alarms when there is a high bytes transfer
+      AlarmDescription: Alarms when there is a high bytes transfer - >10K bytes in a 5 min period
       AlarmName: 'PrivateLinkHighBytesTransferAlarm'
       ComparisonOperator: GreaterThanOrEqualToThreshold
-      Threshold: 1000
+      Threshold: 10000
       AlarmActions:
         - !Ref AlarmNotificationTopic
       Metrics: 
         - Expression: INSIGHT_RULE_METRIC("VPCEndpointConsumerBytesRule", "Sum")
           Id: m1
-          Period: 60
+          Period: 600
           Label: High_Bytes_Transfer
           ReturnData: True
         
-        
+#====================================================================================================================
+# CloudWatch Metrics and CloudWatch Alarms based on PrivateLink CloudWatch Contributor Insights Rule
+#====================================================================================================================
+
+  PrivateLinkRejectConnectionsAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    DependsOn: PrivateLinkRejectConnectionsRule
+    Properties:
+      EvaluationPeriods: '1'
+      AlarmDescription: Alarms when there are > 3 source ips with rejected connections in a 1 min period
+      AlarmName: 'PrivateLinkRejectConnectionsAlarm'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 3
+      AlarmActions:
+        - !Ref AlarmNotificationTopic
+      Metrics: 
+        - Expression: INSIGHT_RULE_METRIC("PrivateLinkRejectConnectionsRule", "Sum")
+          Id: m2
+          Period: 60
+          Label: High_Reject_Connections
+          ReturnData: True
+                
+
 #====================================================================================================================
 # Centralized CloudWatch Dashboard
 #====================================================================================================================
@@ -337,7 +363,7 @@ Resources:
                             }
                         },
                           "region": "${AWS::Region}",
-                        "title": "PrivateLink - Active Connections",
+                        "title": "Top contributors for establishing connections by source IP",
                         "legend": {
                             "position": "right"
                         }
@@ -367,7 +393,7 @@ Resources:
                             }
                         },
                           "region": "${AWS::Region}",
-                        "title": "PrivateLink - Rejected Connections",
+                        "title": "Top contributors for rejected connections by source IP and port",
                         "legend": {
                             "position": "right"
                         }
