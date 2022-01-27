@@ -24,25 +24,25 @@ Parameters:
         - ENABLED
         - DISABLED
 
-  CloudWatchLogGroup-FlowLogs-ConsumerVPC:
+  CloudWatchLogGroupFlowLogsConsumerVPC:
     Description: REQUIRED. Name of the CloudWatch Log group configured for "Consumer side" VPC Flow Logs. Contains the VPC Endpoint
     Type: String
     Default: 'NP1VPC-CloudWatchLogGroup-us-east-1'
     ConstraintDescription: Required
 
-  NetworkInterface-VPCEndpoint:
+  NetworkInterfaceVPCEndpoint:
     Description: REQUIRED. ENI identifier(eni-xxxx) for the VPC endpoint. Used by the “Consumer side” of the PrivateLink. 1 per Az.
     Type: String
     Default: eni-01234123412341234
     ConstraintDescription: Required (either Az1 or Az2 or Az3)
 
-  CloudWatchLogGroup-FlowLogs-ProducerVPC:
+  CloudWatchLogGroupFlowLogsProducerVPC:
     Description: OPTIONAL. Name of the CloudWatch Log group configured for "Producer side" VPC Flow Logs. Contains the NLB (or Gateway LB)
     Type: String
     Default: 'NP2VPC-CloudWatchLogGroup-us-east-1'
     ConstraintDescription: Optional
 
-  NetworkInterface-NLB-Producer:
+  NetworkInterfaceNLBProducer:
     Description: OPTIONAL. ENI identifier(eni-xxxx) for the NLB (or Gateway LB). Used by the “Producer side” of the PrivateLink. 1 per Az.
     Type: String
     Default: eni-01234123412341234
@@ -61,19 +61,19 @@ Parameters:
 Outputs:
   OutputDashboardURI:
     Description: Link to the CloudWatch Dashboard
-    Value: !Sub 'https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${PrivateLinkCWDashboard}'
+    Value: !Sub 'https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${PrivateLinkContributorInsights}'
 
 Conditions:
 
   CreateVPCEndpointConsumerRule: !Not 
     - !Equals 
-      - !Ref NetworkInterface-VPCEndpoint
+      - !Ref NetworkInterfaceVPCEndpoint
       - 'eni-01234123412341234'
   
 
   CreateNLBProducerRule: !Not 
     - !Equals 
-      - !Ref NetworkInterface-NLB-Producer
+      - !Ref NetworkInterfaceNLBProducer
       - 'eni-01234123412341234'
   
 
@@ -102,7 +102,7 @@ Resources:
 
 #===============================================================================================================================
 # Consumer side VPC Interface Endpoint network monitoring (Az1/Az2/Az3) -  Bytes transferred rule 
-# (Sum of bytes transferred indexed on source and destination ip) 
+# (Sum of bytes transferred via the Consumer endpoint from a source ip to a destination ip) 
 #===============================================================================================================================
 
   VPCEndpointConsumerBytesRule:
@@ -115,7 +115,7 @@ Resources:
                 "Version": 1
             },
             "LogGroupNames": [
-                "${CloudWatchLogGroup-FlowLogs-ConsumerVPC}"
+                "${CloudWatchLogGroupFlowLogsConsumerVPC}"
             ],
             "LogFormat": "CLF",
             "Fields": {
@@ -128,7 +128,7 @@ Resources:
                 "Filters": [
                     {
                         "In": [
-                            "${NetworkInterface-VPCEndpoint}"
+                            "${NetworkInterfaceVPCEndpoint}"
                         ],
                         "Match": "interface_id"
                     }
@@ -160,7 +160,7 @@ Resources:
                 "Version": 1
             },
             "LogGroupNames": [
-                "${CloudWatchLogGroup-FlowLogs-ConsumerVPC}"
+                "${CloudWatchLogGroupFlowLogsConsumerVPC}"
             ],
             "LogFormat": "CLF",
             "Fields": {
@@ -176,28 +176,21 @@ Resources:
                 "Filters": [
                     {
                         "In": [
-                            "${NetworkInterface-VPCEndpoint}"
+                            "${NetworkInterfaceVPCEndpoint}"
                         ],
                         "Match": "interface_id"
                     },
                     {
                         "Match": "protocol",
                         "EqualTo": 6
-                    },
-                    {
-                        "Match": "tcp-flag",
-                        "StartsWith": [
-                                    "2",
-                                    "3",
-                                    "19"
-                        ]
-                    }       
+                    }     
                 ],                  
                 "Keys": [
+                    "interface_id",
                     "srcaddr"
                 ]
             },
-            "AggregateOn": "Count"
+            "AggregateOn": "Sum"
         }
       RuleName: PrivateLinkConnectionsRule
       RuleState: !Ref ContributorInsightRuleState    
@@ -217,7 +210,7 @@ Resources:
                 "Version": 1
             },
             "LogGroupNames": [
-                "${CloudWatchLogGroup-FlowLogs-ConsumerVPC}"
+                "${CloudWatchLogGroupFlowLogsConsumerVPC}"
             ],
             "LogFormat": "CLF",
             "Fields": {
@@ -233,7 +226,7 @@ Resources:
                 "Filters": [
                     {
                         "In": [
-                            "${NetworkInterface-VPCEndpoint}"
+                            "${NetworkInterfaceVPCEndpoint}"
                         ],
                         "Match": "interface_id"
                     },
@@ -245,11 +238,11 @@ Resources:
                     }
                 ],                  
                 "Keys": [
-                    "dstport",
+                    "interface_id",
                     "srcaddr"
                 ]
             },
-            "AggregateOn": "Count"
+            "AggregateOn": "Sum"
         }
       RuleName: PrivateLinkRejectConnectionsRule
       RuleState: !Ref ContributorInsightRuleState    
@@ -333,7 +326,7 @@ Resources:
                             }
                         },
                           "region": "${AWS::Region}",
-                        "title": "PrivateLink Bytes Transferred",
+                        "title": "PrivateLink - Bytes Transferred",
                         "legend": {
                             "position": "right"
                         }
@@ -363,7 +356,7 @@ Resources:
                             }
                         },
                           "region": "${AWS::Region}",
-                        "title": "Top contributors for establishing connections by source IP",
+                        "title": "PrivateLink - Total Connections",
                         "legend": {
                             "position": "right"
                         }
@@ -393,7 +386,7 @@ Resources:
                             }
                         },
                           "region": "${AWS::Region}",
-                        "title": "Top contributors for rejected connections by source IP and port",
+                        "title": "PrivateLink - Rejected Connections",
                         "legend": {
                             "position": "right"
                         }
@@ -401,5 +394,5 @@ Resources:
                 }
             ]
          }
-      DashboardName: PrivateLink-NetworkMonitoring-Dashboard
+      DashboardName: PrivateLinkContributorInsights
       
