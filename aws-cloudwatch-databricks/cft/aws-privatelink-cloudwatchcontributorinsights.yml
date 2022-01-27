@@ -295,7 +295,7 @@ Resources:
 #====================================================================================================================
 # Centralized CloudWatch Dashboard
 #====================================================================================================================
-  PrivateLinkCWDashboard:
+  PrivateLinkContributorInsights:
     Type: AWS::CloudWatch::Dashboard
     Condition: CreateDashboardRule
     Properties:
