@@ -51,7 +51,7 @@ Parameters:
   EmailAddress:
     Description: Email Address for notifications
     Type: String
-    Default: kmmahaj@amazon.com
+    Default: admin@yourdomain.com
 
   TopicName:
     Description: SNS Topic Name

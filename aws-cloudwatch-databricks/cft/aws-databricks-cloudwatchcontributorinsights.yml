@@ -32,12 +32,12 @@ Parameters:
   VPCEndpointInterfaceId:
     Description: ENI identifier (eni-xxxx) for the VPC endpoint (Kinesis)
     Type: String
-    Default: eni-0fb59682b9b3c4cb3
+    Default: eni-01234123412341234
 
   PrivateLinkVPCEndpointInterfaceId:
     Description: ENI identifier (eni-xxxx) for the Consumer side VPC endpoint (i.e. in the Consumer Managed VPC for Databricks) 
     Type: String
-    Default: eni-0fb59682b9b3c4cb3
+    Default: eni-01234123412341234
 
   NATInstancePrivateIP:
     Description: Private IP address of the NAT instance
@@ -52,7 +52,7 @@ Parameters:
   EmailAddress:
     Description: Email Address for notifications
     Type: String
-    Default: kmmahaj@amazon.com
+    Default: admin@yourdomain.com
 
   TopicName:
     Description: SNS Topic Name
