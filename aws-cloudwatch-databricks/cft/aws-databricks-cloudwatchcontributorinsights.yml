@@ -454,22 +454,22 @@ Resources:
       RuleState: !Ref ContributorInsightRuleState    
 
 #====================================================================================================================
-# CloudWatch Metrics and CloudWatch Alarms based on PrivateLink CloudWatch Contributor Insights Rule
+# CloudWatch Metrics and CloudWatch Alarms based on NAT instance CloudWatch Contributor Insights Rule
 #====================================================================================================================
 
-  PrivateLinkBytesTransferredAlarm:
+  NATInstanceBytesTransferredAlarm:
     Type: 'AWS::CloudWatch::Alarm'
-    DependsOn: PrivateLinkBytesInsightRule
+    DependsOn: NATInstanceBytesInsightRule
     Properties:
       EvaluationPeriods: '1'
       AlarmDescription: Alarms when there is a high bytes transfer
-      AlarmName: 'PrivateLinkHighBytesTransferAlarm'
+      AlarmName: 'NATInstanceHighBytesTransferAlarm'
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Threshold: 1000
       AlarmActions:
         - !Ref AlarmNotificationTopic
       Metrics: 
-        - Expression: INSIGHT_RULE_METRIC("PrivateLinkBytesInsightRule", "Sum")
+        - Expression: INSIGHT_RULE_METRIC("NATInstanceBytesInsightRule", "Sum")
           Id: m1
           Period: 60
           Label: High_Bytes_Transfer
@@ -637,5 +637,5 @@ Resources:
                 }
             ]
          }
-      DashboardName: Databricks-NetworkMonitoring-Dashboard
+      DashboardName: DatabricksCWDashboard
       
