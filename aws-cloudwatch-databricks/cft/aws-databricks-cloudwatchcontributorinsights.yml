@@ -44,6 +44,11 @@ Parameters:
     Type: String
     Default: '100.0.0.1'
 
+  S3GatewayPrivateIP:
+    Description: Private IP address from the S3 Gateway endpoint prefixlist
+    Type: String
+    Default: '100.0.0.1'
+
   NATGWPrivateIP:
     Description: Private IP address of the NAT GW
     Type: String
@@ -86,11 +91,17 @@ Conditions:
       - !Ref NATGWPrivateIP
       - '100.0.0.1'
 
+  CreateS3GatewayRule: !Not 
+    - !Equals 
+      - !Ref S3GatewayPrivateIP
+      - '100.0.0.1'
+
   CreateDashboardRule: !Or 
     - !Condition CreateVPCEndpointRule
     - !Condition CreatePrivateLinkRule
     - !Condition CreateNATInstanceRule
     - !Condition CreateNATGatewayRule
+    - !Condition CreateS3GatewayRule
     
 
 Resources:
@@ -185,7 +196,7 @@ Resources:
                         "In": [
                             "${NATInstancePrivateIP}"
                         ],
-                        "Match": "dstaddr"
+                        "Match": "srcaddr"
                     }
                 ],                  
                 "Keys": [
@@ -197,6 +208,50 @@ Resources:
             "AggregateOn": "Sum"
         }
       RuleName: NATInstanceBytesInsightRule
+      RuleState: !Ref ContributorInsightRuleState    
+
+#===============================================================================================================================
+# S3 Gateway data transfer monitoring and visualization - AWS Databricks data plane to S3
+# (Sum of bytes transferred by source and destination ip) 
+#===============================================================================================================================
+
+  S3GatewayBytesInsightRule:
+    Type: AWS::CloudWatch::InsightRule
+    Properties:
+      RuleBody: !Sub |
+        {
+            "Schema": {
+                "Name": "CloudWatchLogRule",
+                "Version": 1
+            },
+            "LogGroupNames": [
+                "${VPCFlowLogsCloudWatchLogGroup}"
+            ],
+            "LogFormat": "CLF",
+            "Fields": {
+                "4": "srcaddr",
+                "5": "dstaddr",
+                "3": "interface_id",
+                "10": "bytes"
+            },
+            "Contribution": {
+                "Filters": [
+                    {
+                        "In": [
+                            "${S3GatewayPrivateIP}"
+                        ],
+                        "Match": "srcaddr"
+                    }
+                ],                  
+                "Keys": [
+                    "srcaddr",
+                    "dstaddr"
+                ],
+                "ValueOf": "bytes"
+            },
+            "AggregateOn": "Sum"
+        }
+      RuleName: S3GatewayBytesInsightRule
       RuleState: !Ref ContributorInsightRuleState    
 
 #===============================================================================================================================
@@ -455,6 +510,36 @@ Resources:
                         },
                           "region": "${AWS::Region}",
                         "title": "VPC Endpoints Bytes - Kinesis to Databricks",
+                        "legend": {
+                            "position": "right"
+                        }
+                    }
+                },
+                              {
+                    "type": "metric",
+                    "x": 0,
+                    "y": 12,
+                    "width": 12,
+                    "height": 6,
+                    "properties": {
+                        "period": 60,
+                        "insightRule": {
+                            "maxContributorCount": 50,
+                            "orderBy": "Sum",
+                            "ruleName": "${S3GatewayBytesInsightRule.RuleName}"
+                        },
+                        "stacked": false,
+                        "view": "timeSeries",
+                        "yAxis": {
+                            "left": {
+                                "showUnits": false
+                            },
+                            "right": {
+                                "showUnits": false
+                            }
+                        },
+                          "region": "${AWS::Region}",
+                        "title": "Bytes Transfer - AWS Databricks Data Plane to S3",
                         "legend": {
                             "position": "right"
                         }
