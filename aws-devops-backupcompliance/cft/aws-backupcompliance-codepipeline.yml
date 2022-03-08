@@ -119,7 +119,7 @@ Resources:
                     - ':'
                     - !Ref 'AWS::AccountId'
                     - ':'
-                    - !Ref PCIAutohealConformancePackPipeline
+                    - !Ref BackupCompliancePipeline
 
 # Git checkin triggers CodePipeline execution
   AmazonCloudWatchEventRule:
