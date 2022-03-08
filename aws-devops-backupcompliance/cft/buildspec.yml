@@ -10,7 +10,7 @@ phases:
             - export ACCID=$(aws sts get-caller-identity --query 'Account' | tr -d '"')
             - aws s3 sync . s3://$STAGING_BUCKET/ --delete --exclude "*" --include "*.json" --include "*.yml" --include "*.yaml"
             - echo "S3 Upload Complete, updating cloudformation now..."
-            - aws cloudformation create-stack-set --stack-set-name aws-backupcompliance-framework --parameters "[{\"ParameterKey\":\"DeliveryS3Bucket\",\"ParameterValue\":\"replacewithyourdeliverybucket\"}]" --template-url "https://$STAGING_BUCKET.s3.amazonaws.com/aws-backupcompliance-framework.yml" --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+            - aws cloudformation create-stack-set --stack-set-name aws-backupcompliance-framework --parameters "[{\"ParameterKey\":\"DeliveryS3Bucket\",\"ParameterValue\":\"replacewithyourdeliverybucket\"}]" --template-url "https://$STAGING_BUCKET.s3.amazonaws.com/aws-backupcompliance-framework.yaml" --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
             - aws cloudformation create-stack-instances --stack-set-name aws-backupcompliance-framework --accounts 875914227481 --regions us-east-1
     post_build:
         commands:
