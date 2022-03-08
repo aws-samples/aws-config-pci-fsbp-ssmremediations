@@ -1,0 +1,42 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: DevOps automation for backup compliance
+
+# ----------------------------------------------------------------------------------------------------------
+#  CloudFormation Template 1 of 1 - 
+#   
+#  
+#  1- Provisions an AWS Backup Audit Manager framework with 5 default controls
+
+# 
+# @kmmahaj
+##
+## License:
+## This code is made available under the MIT-0 license. See the LICENSE file.
+# ------------------------------------------------------------...............................................
+
+ 
+Resources:
+
+# --------------------------------------------------------------------------------------------------
+#  1- Provisions an AWS Backup Audit Manager framework with 5/5 default controls
+# --------------------------------------------------------------------------------------------------
+
+  BackupComplianceFramework:
+    Type: AWS::Backup::Framework
+    Properties:
+      FrameworkControls:
+        - ControlName: BACKUP_RESOURCES_PROTECTED_BY_BACKUP_PLAN
+        - ControlName: BACKUP_RECOVERY_POINT_MINIMUM_RETENTION_CHECK
+          ControlInputParameters:
+            - ParameterName: requiredRetentionDays
+              ParameterValue: '35'
+        - ControlName: BACKUP_RECOVERY_POINT_MANUAL_DELETION_DISABLED
+        - ControlName: BACKUP_PLAN_MIN_FREQUENCY_AND_MIN_RETENTION_CHECK
+          ControlInputParameters:
+            - ParameterName: requiredRetentionDays
+              ParameterValue: '35'
+            - ParameterName: requiredFrequencyUnit
+              ParameterValue: 'hours'
+            - ParameterName: requiredFrequencyValue
+              ParameterValue: '24'
+        - ControlName: BACKUP_RECOVERY_POINT_ENCRYPTED
