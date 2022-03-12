@@ -18,7 +18,7 @@ Description: DevOps automation for backup compliance
 Resources:
 
 # --------------------------------------------------------------------------------------------------
-#  1- Provisions an AWS Backup Audit Manager framework with 4/5 default controls
+#  1- Provisions an AWS Backup Audit Manager framework with 3/5 default controls
 # --------------------------------------------------------------------------------------------------
 
   BackupComplianceFramework:
@@ -26,17 +26,7 @@ Resources:
     Properties:
       FrameworkControls:
         - ControlName: BACKUP_RESOURCES_PROTECTED_BY_BACKUP_PLAN
-        - ControlName: BACKUP_RECOVERY_POINT_MINIMUM_RETENTION_CHECK
-          ControlInputParameters:
-            - ParameterName: requiredRetentionDays
-              ParameterValue: '35'
         - ControlName: BACKUP_RECOVERY_POINT_MANUAL_DELETION_DISABLED
-        - ControlName: BACKUP_PLAN_MIN_FREQUENCY_AND_MIN_RETENTION_CHECK
-          ControlInputParameters:
-            - ParameterName: requiredRetentionDays
-              ParameterValue: '35'
-            - ParameterName: requiredFrequencyUnit
-              ParameterValue: 'hours'
-            - ParameterName: requiredFrequencyValue
-              ParameterValue: '24'
+        - ControlName: BACKUP_RECOVERY_POINT_ENCRYPTED
+   
         

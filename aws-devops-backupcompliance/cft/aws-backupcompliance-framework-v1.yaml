@@ -26,11 +26,12 @@ Resources:
     Properties:
       FrameworkControls:
         - ControlName: BACKUP_RESOURCES_PROTECTED_BY_BACKUP_PLAN
+        - ControlName: BACKUP_RECOVERY_POINT_ENCRYPTED
+        - ControlName: BACKUP_RECOVERY_POINT_MANUAL_DELETION_DISABLED
         - ControlName: BACKUP_RECOVERY_POINT_MINIMUM_RETENTION_CHECK
           ControlInputParameters:
             - ParameterName: requiredRetentionDays
               ParameterValue: '35'
-        - ControlName: BACKUP_RECOVERY_POINT_MANUAL_DELETION_DISABLED
         - ControlName: BACKUP_PLAN_MIN_FREQUENCY_AND_MIN_RETENTION_CHECK
           ControlInputParameters:
             - ParameterName: requiredRetentionDays
@@ -39,4 +40,4 @@ Resources:
               ParameterValue: 'hours'
             - ParameterName: requiredFrequencyValue
               ParameterValue: '24'
-        - ControlName: BACKUP_RECOVERY_POINT_ENCRYPTED
+  
