@@ -11,7 +11,7 @@ phases:
             - aws s3 sync . s3://$STAGING_BUCKET/ --delete --exclude "*" --include "*.json" --include "*.yml" --include "*.yaml"
             - echo "S3 Upload Complete, updating cloudformation now..."
             - aws cloudformation create-stack-set --stack-set-name aws-backupcompliance-framework --template-url "https://$STAGING_BUCKET.s3.amazonaws.com/aws-backupcompliance-framework.yaml" --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
-            - aws cloudformation create-stack-instances --stack-set-name aws-backupcompliance-framework --accounts 875914227481 --regions us-east-1
+            - aws cloudformation create-stack-instances --stack-set-name aws-backupcompliance-framework --accounts [accountid] --regions [awsregion]
     post_build:
         commands:
             - echo "Deploy complete"
